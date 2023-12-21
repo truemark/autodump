@@ -11,7 +11,6 @@ import {
     Tag as RdsTag
 } from "@aws-sdk/client-rds"
 
-
 const rdsClient = new RDSClient({});
 const sfnClient = new SFNClient({});
 
@@ -20,8 +19,8 @@ type Action = "dump";
 // type State = "stopped" | "running" | "terminated" | "other";
 
 interface AutoDumpTags {
-    readonly timezone?: string;
-    readonly dumpSchedule?: string;
+    readonly timeZone?: string;
+    readonly startSchedule?: string;
     readonly databaseName?: string;
     readonly retentionDays?: string;
 }
@@ -42,7 +41,7 @@ export function cyrb53(str: string, seed: number = 0): number {
 }
 
 function hashTagsV1(tags: AutoDumpTags): string {
-    return "V1" + cyrb53(`${tags.timezone ?? ""}|${tags.dumpSchedule ?? ""}|` +
+    return "V1" + cyrb53(`${tags.timeZone ?? ""}|${tags.startSchedule ?? ""}|` +
         `${tags.databaseName ?? ""}|${tags.retentionDays ?? ""}|`);
 }
 
@@ -51,7 +50,7 @@ interface AutoDumpResource {
     readonly id: string,
     readonly tags: AutoDumpTags,
     readonly tagsHash: string,
-    readonly dumpSchedule: string
+    readonly startSchedule: string
 }
 
 interface AutoDumpRdsClusterInstance {
@@ -106,7 +105,7 @@ function optionalCron(value: string | undefined, tz: string): CronExpression | u
 }
 
 function cronAction(resource: AutoDumpResource, action: Action, cronExpression: string): AutoDumpAction | undefined {
-    const tz = resource.tags.timezone ?? "UTC";
+    const tz = resource.tags.timeZone ?? "UTC";
     const expression = optionalCron(cronExpression, tz);
     if (expression && expression.hasNext()) {
         return {
@@ -121,6 +120,7 @@ function cronAction(resource: AutoDumpResource, action: Action, cronExpression: 
             resourceType: resource.type,
             resourceId: resource.id,
             when: "",
+            action,
             tagHash: hashTagsV1(resource.tags),
         };
     };
@@ -128,10 +128,10 @@ function cronAction(resource: AutoDumpResource, action: Action, cronExpression: 
 
 function cronActions(resource: AutoDumpResource): AutoDumpAction[] {
     const actions: AutoDumpAction[] = [];
-    console.log(`\n\ncronActions: dump schedule is ${resource.tags.dumpSchedule}. If it is undefined, check the tags.\n`)
-    if (resource.tags.dumpSchedule) {
-        const dump = cronAction(resource, "dump", resource.tags.dumpSchedule);
-        console.log(`\n\ncronActions  ${resource.tags.dumpSchedule} `)
+    console.log(`\n\ncronActions: dump schedule is ${resource.tags.startSchedule}. If it is undefined, check the tags.\n`)
+    if (resource.tags.startSchedule) {
+        const dump = cronAction(resource, "dump", resource.tags.startSchedule);
+        console.log(`\n\ncronActions  ${resource.tags.startSchedule} `)
 
         if (dump) {
             actions.push(dump);
@@ -184,7 +184,8 @@ function toCamelCase(str: string): string {
     return str.charAt(0).toLowerCase() + str.slice(1);
 }
 
-
+// This is the call to the state machine to start an execution.
+// It sends in the assembled parameters to the machine.
 async function startExecution(stateMachineArn: string, resource: AutoDumpResource, action?: AutoDumpAction): Promise<void> {
     console.log(`\n\nstartExecution: ${resource.id} \n`) //${action.action}\n`)
     if (action) {
@@ -199,15 +200,16 @@ async function startExecution(stateMachineArn: string, resource: AutoDumpResourc
     }
 }
 
+
 export async function processStateAction(stateMachineArn: string, action: AutoDumpAction): Promise<AutoDumpActionResult | undefined> {
     console.log(`\n\nprocessStateAction: Processing ${action.action} of ${action.resourceType} ${action.resourceId} at ${action.when}\n`);
-    let resources = [];
+    let resources : any[] = [];
     if (action.resourceType === "rds-instance") {
         resources = await describeRdsInstances(action.resourceId);
     }
-    if (action.resourceType === "rds-cluster") {
-        resources = await describeRdsClusters(action.resourceId);
-    }
+    // if (action.resourceType === "rds-cluster") {
+    //     resources = await describeRdsClusters(action.resourceId);
+    // }
     if (resources.length === 0) {
         return {...action, execute: false, reason: "Instance no longer exists"};
     }
@@ -241,6 +243,14 @@ export async function processStateAction(stateMachineArn: string, action: AutoDu
                 resource
             };
         }
+    } else {
+        console.log(`\n\nprocessStateAction final catch all else`);
+        return {
+            ...action,
+            execute: false,
+            reason: "catch all",
+            resource
+        };
     }
 
 }
@@ -252,21 +262,25 @@ function rdsTags(tags?: RdsTag[]): AutoDumpTags {
     const autoDumpTags = tags.reduce((tags, tag) => {
         if (tag.Key === "autodump:dump-schedule"
             || tag.Key === "autodump:database-name"
+            || tag.Key === "autodump:time-zone"
             || tag.Key === "autodump:retention-days") {
             tags[toCamelCase(tag.Key.replace("autodump:", ""))] = tag.Value.trim();
         }
         return tags;
     }, {} as AutoDumpTags) ?? {};
+    return {};
 }
 
-async function describeRdsInstances(instanceId: string): Promise<AutoDumpRdsInstanceResource[]> {
+//----------------------------------------------------------------------------
+// these functions manipulate the targets
+async function describeRdsInstances(instanceId: string): Promise<AutoDumpResource[]> {
     const resources: AutoDumpResource[] = [];
     try {
         const output = await rdsClient.send(new DescribeDBInstancesCommand({
             DBInstanceIdentifier: instanceId
         }));
         for (const instance of output.DBInstances ) {
-            const tags = rdsTags(instance.TagList);
+            const tags : AutoDumpTags = rdsTags(instance.TagList);
             const tagsHash = hashTagsV1(tags);
             resources.push({
                 type: "rds-instance",
@@ -274,7 +288,7 @@ async function describeRdsInstances(instanceId: string): Promise<AutoDumpRdsInst
                 // createTime: instance.InstanceCreateTime?.toISOString() ?? new Date().toISOString(),
                 // startTime,
                 // state,
-                instanceId,
+                startSchedule: tags.startSchedule,
                 tags,
                 tagsHash
             })
@@ -289,41 +303,39 @@ async function describeRdsInstances(instanceId: string): Promise<AutoDumpRdsInst
     return resources;
 }
 
-
-async function describeRdsClusters(clusterId: string): Promise<AutoDumpRdsClusterResource[]> {
-    const resources: AutoDumpRdsClusterResource[] = [];
-    try {
-        const output = await rdsClient.send(new DescribeDBClustersCommand({
-            DBClusterIdentifier: clusterId
-        }));
-        for (const cluster of output.DBClusters  ) {
-            // const startTime = await getRdsStartTime(SourceType.db_cluster, clusterId).then(date => date.toISOString());
-            console.log(cluster.DBClusterMembers?.map(member => {return {id: member.DBInstanceIdentifier }}))
-            const instanceIds: AutoDumpRdsClusterInstance[] = cluster.DBClusterMembers?.map(member => {return {id: member.DBInstanceIdentifier }}) ?? [];
-            const dumpSchedule :string = "0 8 * * *"
-            const tags = rdsTags(cluster.TagList);
-            const tagsHash = hashTagsV1(tags);
-            resources.push({
-                type: "rds-cluster",
-                id: clusterId,
-                // createTime: cluster.ClusterCreateTime?.toISOString() ?? new Date().toISOString(),
-                // startTime: startTime,
-                dumpSchedule,
-                instanceIds,
-                tags,
-                tagsHash
-            })
-        }
-    } catch (error) {
-        if (error.errorType !== "DBClusterNotFoundFault") {
-            return resources;
-        } else {
-            throw error;
-        }
-    }
-    return resources;
-}
-
+// async function describeRdsClusters(clusterId: string): Promise<AutoDumpRdsClusterResource[]> {
+//     const resources: AutoDumpRdsClusterResource[] = [];
+//     try {
+//         const output = await rdsClient.send(new DescribeDBClustersCommand({
+//             DBClusterIdentifier: clusterId
+//         }));
+//         for (const cluster of output.DBClusters  ) {
+//             // const startTime = await getRdsStartTime(SourceType.db_cluster, clusterId).then(date => date.toISOString());
+//             console.log(cluster.DBClusterMembers?.map(member => {return {id: member.DBInstanceIdentifier }}))
+//             const instanceIds: AutoDumpRdsClusterInstance[] = cluster.DBClusterMembers?.map(member => {return {id: member.DBInstanceIdentifier }}) ?? [];
+//             const startSchedule :string = "0 8 * * *"
+//             const tags = rdsTags(cluster.TagList);
+//             const tagsHash = hashTagsV1(tags);
+//             resources.push({
+//                 type: "rds-cluster",
+//                 id: clusterId,
+//                 // createTime: cluster.ClusterCreateTime?.toISOString() ?? new Date().toISOString(),
+//                 // startTime: startTime,
+//                 startSchedule,
+//                 instanceIds,
+//                 tags,
+//                 tagsHash
+//             })
+//         }
+//     } catch (error) {
+//         if (error.errorType !== "DBClusterNotFoundFault") {
+//             return resources;
+//         } else {
+//             throw error;
+//         }
+//     }
+//     return resources;
+// }
 
 export async function handleCloudWatchEvent(stateMachineArn: string, event: any): Promise<void> {
     console.log(`\n\nProcessing CloudWatch event ${event.id}. event detail type is ${event["detail-type"]}`);
@@ -336,7 +348,6 @@ export async function handleCloudWatchEvent(stateMachineArn: string, event: any)
 
     }
 }
-
 
 export async function handler(event: any): Promise<any> {
     const stateMachineArn = event.StateMachine.Id;
