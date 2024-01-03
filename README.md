@@ -62,3 +62,5 @@ Done in 7.5s
 
 ```
 
+# Reference
+This [article](https://medium.com/tysonworks/manage-batch-jobs-with-aws-batch-1f91229b1b6e) has a largish code example. The full example is behind a Medium firewall. 
