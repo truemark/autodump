@@ -3,7 +3,8 @@ export enum AwsRegion {
 }
 
 export enum AwsAccount {
-    Prod = "348901320172",
-    Dev = "062758075735",
-    Sandbox = "825434587220",
+    VoProd = "348901320172",
+    VoDev = "062758075735",
+    LkSandbox = "825434587220",
+    SupplyChainDev = "250585841971"
 }
