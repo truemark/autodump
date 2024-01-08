@@ -41,7 +41,7 @@ export class AutoDump extends Construct {
             "vpc": vpc,
             "vpcSubnets": privateSubnets,
             "spot": false,
-            "computeEnvironmentName": "autodump",
+            "computeEnvironmentName": stackName,
             "maxvCpus": 4,
         }
 
@@ -58,10 +58,10 @@ export class AutoDump extends Construct {
         // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_events_targets.BatchJob.html#example
 
         const computeEnvironment: FargateComputeEnvironment =
-            new FargateComputeEnvironment(this, stackName, fargateComputeEnvironmentProps);
+            new FargateComputeEnvironment(this, `${stackName}Compute`, fargateComputeEnvironmentProps);
 
         // // Create the stack service role, allow batch and ecs as principals, and attach required managed policies.
-        const batchServiceRole = new Iam.Role(this, "autodump-service-role", {
+        const batchServiceRole = new Iam.Role(this, `${stackName}ServiceRole`, {
             assumedBy: new Iam.CompositePrincipal(new Iam.ServicePrincipal("batch.amazonaws.com"),
                 new Iam.ServicePrincipal("ecs.amazonaws.com")),
             managedPolicies: [Iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSBatchServiceRole"),
@@ -81,17 +81,17 @@ export class AutoDump extends Construct {
             resources: ["*"]
         }));
 
-        const jobQueue = new batch.JobQueue(this, stackName, {
+        const jobQueue = new batch.JobQueue(this, `${stackName}JobQueue`, {
             computeEnvironments: [{
                 computeEnvironment,
                 order: 1,
             },
             ],
             enabled: true,
-            jobQueueName: "autodump32"
+            jobQueueName: stackName
         });
 
-        const repository = new ecr.Repository(this, stackName, {
+        const repository = new ecr.Repository(this, `${stackName}Repository`, {
             repositoryName: stackName
         });
 

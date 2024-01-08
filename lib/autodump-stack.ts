@@ -3,9 +3,10 @@ import { Construct } from 'constructs';
 import {AutoDump} from "./autodump-construct";
 import * as p from "../package.json";
 import {AwsAccount, AwsRegion} from "./enums";
+import {ExtendedStack, ExtendedStackProps} from "truemark-cdk-lib/aws-cdk";
 
-export class AutoDumpStack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+export class AutoDumpStack extends ExtendedStack {
+    constructor(scope: Construct, id: string, props?: ExtendedStackProps) {
         super(scope, id, props);
         this.addMetadata("Version", p.version);
         this.addMetadata("Name", p.name);
@@ -35,6 +36,6 @@ export class AutoDumpStack extends cdk.Stack {
 //             console.log("Nada" + app.account)
 //         };
 
-        // new AutoDump(this, "AutoDump", {});
+        new AutoDump(this, "AutoDump", {});
     }
 }
