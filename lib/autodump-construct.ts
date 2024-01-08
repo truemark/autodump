@@ -1,8 +1,10 @@
 import {Construct} from "constructs"
 import {IEventBus, Rule} from "aws-cdk-lib/aws-events"
 import * as Iam from "aws-cdk-lib/aws-iam"
-//import * as Batch from "aws-cdk-lib/aws-batch"
 import * as ecr from 'aws-cdk-lib/aws-ecr';
+import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as logs from 'aws-cdk-lib/aws-logs';
 
 import * as Ec2 from "aws-cdk-lib/aws-ec2"
 import { FargateComputeEnvironmentProps, FargateComputeEnvironment } from 'aws-cdk-lib/aws-batch';
@@ -58,10 +60,10 @@ export class AutoDump extends Construct {
         // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_events_targets.BatchJob.html#example
 
         const computeEnvironment: FargateComputeEnvironment =
-            new FargateComputeEnvironment(this, `${stackName}Compute`, fargateComputeEnvironmentProps);
+            new FargateComputeEnvironment(this, "fargateComputeEnvironment", fargateComputeEnvironmentProps);
 
         // // Create the stack service role, allow batch and ecs as principals, and attach required managed policies.
-        const batchServiceRole = new Iam.Role(this, `${stackName}ServiceRole`, {
+        const batchServiceRole = new Iam.Role(this, "ServiceRole", {
             assumedBy: new Iam.CompositePrincipal(new Iam.ServicePrincipal("batch.amazonaws.com"),
                 new Iam.ServicePrincipal("ecs.amazonaws.com")),
             managedPolicies: [Iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSBatchServiceRole"),
@@ -81,7 +83,7 @@ export class AutoDump extends Construct {
             resources: ["*"]
         }));
 
-        const jobQueue = new batch.JobQueue(this, `${stackName}JobQueue`, {
+        const jobQueue = new batch.JobQueue(this, "jobQueue", {
             computeEnvironments: [{
                 computeEnvironment,
                 order: 1,
@@ -91,9 +93,62 @@ export class AutoDump extends Construct {
             jobQueueName: stackName
         });
 
-        const repository = new ecr.Repository(this, `${stackName}Repository`, {
+        const repository = new ecr.Repository(this, "ecrRepository", {
             repositoryName: stackName
         });
 
+        const asset = new DockerImageAsset(this, "dockerImageAsset", {
+            directory: "./resources",
+            assetName: stackName
+        });
+
+        const jobSuccess = new sfn.Succeed(this, 'Success');
+
+        const jobFailed = new sfn.Fail(this, 'jobFailed', {
+            cause: 'RDS Cloning failed with unspecified error.',
+            error: 'RDS Cloning failed with unspecified error.'
+        });
+
+        const waitY = new sfn.Wait(this, 'Wait 10 Seconds', {
+            time: sfn.WaitTime.duration(cdk.Duration.seconds(10))
+        });
+
+        const waitX = new sfn.Wait(this, 'Wait 5 seconds', {
+            time: sfn.WaitTime.duration(cdk.Duration.seconds(5))
+        });
+
+        /**-------------------------------------------------------------------
+         * Create the variables to be used in the state machine from the database
+         * identifier. They will be used throughout this state machine.
+         */
+        const createVars = new sfn.Pass(this, 'Create Variables', {
+            parameters: {
+                "Parameters": {
+                    "InitParameters": {
+                        "DbCopySharedSnapshotIdentifier.$": "States.Format('{}-cloneprep-copy',$.DbInstanceIdentifier)",
+                        "DbCopySnapshotIdentifier.$": "States.Format('{}-cloneprep',$.DbInstanceIdentifier)",
+                        "DbInstanceIdentifier.$": "$.DbInstanceIdentifier",
+                        "RemoteSharedDbSnapshotIdentifier.$": "States.Format('arn:aws:rds:us-west-2:{}:snapshot:{}-cloneprep','348901320172', $.DbInstanceIdentifier)",
+                        "SourceKmsKeyId.$": "$.SourceKmsKeyId",
+                        "TargetAccountNumber.$": "$.TargetAccountNumber",
+                        "TargetKmsKeyId.$": "$.TargetKmsKeyId",
+                        "TargetStateMachineArn.$": "$.TargetStateMachineArn",
+                    }
+                }
+            }
+        });
+
+        const logGroup = new logs.LogGroup(this, '/ClonePrepSource/', {});
+        const definition = createVars
+
+        const sMachine = new sfn.StateMachine(this, "StateMachine", {
+            definition,
+            logs: {
+                destination: logGroup,
+                level: sfn.LogLevel.ALL,
+            },
+            timeout: cdk.Duration.hours(6),
+            comment: 'Create snapshot copy for cloning, and share to nonprod account.',
+        });
 
     }};

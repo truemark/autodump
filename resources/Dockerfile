@@ -1,3 +1,3 @@
 FROM busybox
-COPY ./my-static-binary /my-static-binary
-CMD ["/my-static-binary"]
+#COPY ./my-static-binary /my-static-binary
+CMD ["echo", "YO"]
