@@ -1,0 +1,14 @@
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+.DS_Store
+
+# This file should be ignored if it is present. It has sensitive info.
+# It also shouldn't be a part of this repo. If it is, something is wrong.
+cdk.context.json
+
