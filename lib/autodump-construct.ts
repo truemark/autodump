@@ -2,7 +2,7 @@ import {Construct} from "constructs"
 import {IEventBus} from "aws-cdk-lib/aws-events"
 import * as Iam from "aws-cdk-lib/aws-iam"
 import * as ecr from 'aws-cdk-lib/aws-ecr';
-import {Duration} from 'aws-cdk-lib/core';
+import {Duration, Fn} from 'aws-cdk-lib/core';
 import {
   DefinitionBody,
   Fail,
@@ -18,6 +18,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import {ScannerFunction} from "./scanner-function";
 import * as Ec2 from "aws-cdk-lib/aws-ec2"
+import {Vpc} from 'aws-cdk-lib/aws-ec2';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import {FargateComputeEnvironment, FargateComputeEnvironmentProps} from 'aws-cdk-lib/aws-batch';
 import * as ecs from "aws-cdk-lib/aws-ecs";
@@ -27,19 +28,24 @@ import {BatchSubmitJob, BatchSubmitJobProps} from "aws-cdk-lib/aws-stepfunctions
 
 export interface AutoDumpProps {
   readonly tagPrefix?: string;
-  readonly eventBus?: IEventBus;
+  readonly eventBus?: IEventBus; // TODO This doesn't belong. Use the default event bus.
+  readonly vpcId: string;
+  readonly privateSubnetIds: string[];
+  readonly availabilityZones: string[];
 }
 
 export class AutoDump extends Construct {
-  constructor(scope: Construct, id: string, props?: AutoDumpProps) {
+  constructor(scope: Construct, id: string, props: AutoDumpProps) {
     super(scope, id);
 
     const stackName = "autodump"
     const currentAccount = cdk.Stack.of(this).account;
-    const currentRegion = cdk.Stack.of(this).region;
+    // const currentRegion = cdk.Stack.of(this).region;
 
-    const vpc = Ec2.Vpc.fromLookup(this, 'ImportVPC', {
-      vpcName: "services"
+    const vpc = Vpc.fromVpcAttributes(this, 'Vpc', {
+      vpcId: props.vpcId,
+      availabilityZones: props.availabilityZones, // TODO Add to props
+      privateSubnetIds: props.privateSubnetIds,
     });
 
     // Per AWS Support, any VPC created outside of the local cdk stack will only
@@ -157,12 +163,9 @@ export class AutoDump extends Construct {
         executionRole: batchServiceRole,
         logging: logDriver,
         command: ["/app/dumpdb.sh"],
-        secrets: {
-          MY_SECRET_ENV_VAR: batch.Secret.fromSecretsManager(dumpSecret),
+        environment: { // Add environment variables here
+          SECRET_ARN: JsonPath.stringAt('$.Secret'), // Assuming 'Secret' contains the secret ARN
         },
-        // environment: { // Add environment variables here
-        //   SECRET_ARN: JsonPath.stringAt('$.Secret'), // Assuming 'Secret' contains the secret ARN
-        // },
       }),
     });
 
