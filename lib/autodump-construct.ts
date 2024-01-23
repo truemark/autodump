@@ -153,6 +153,27 @@ export class AutoDump extends Construct {
       error: 'AutoDump failed with unspecified error.'
     });
 
+    // This secret is for testing. It should not live in this stack in the future.
+    const dumpSecret = new secretsmanager.Secret(this, "Secret", {
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify(
+          {
+            "username": "autodump",
+            "port": "5432",
+            "databasename": "dumptest",
+            "endpoint": "database-1.cp1jdygezzou.us-west-2.rds.amazonaws.com",
+            "engine": "postgres",
+            "bucketname": autoDumpBucket.bucketName,
+          }
+        ),
+        generateStringKey: 'password',
+        excludePunctuation: true,
+        passwordLength: 16,
+      }
+    });
+
+    cdk.Tags.of(dumpSecret).add("autodump:start-schedule", "3 16 - - -");
+    // cdk.Tags.of(dumpSecret).add("autodump:timezone", "America/New_York");
     // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
     // this is the only way it works
     const ecsJob = new batch.EcsJobDefinition(this, 'JobDefn', {
@@ -163,9 +184,6 @@ export class AutoDump extends Construct {
         executionRole: batchServiceRole,
         logging: logDriver,
         command: ["/app/dumpdb.sh"],
-        environment: { // Add environment variables here
-          SECRET_ARN: JsonPath.stringAt('$.Secret'), // Assuming 'Secret' contains the secret ARN
-        },
       }),
     });
 
@@ -173,7 +191,11 @@ export class AutoDump extends Construct {
       jobDefinitionArn: ecsJob.jobDefinitionArn,
       jobName: ecsJob.jobDefinitionName,
       jobQueueArn: jobQueue.jobQueueArn,
-      inputPath: '$.Secret',
+      containerOverrides: {
+        environment:           {
+           "SECRET_ARN" :  JsonPath.stringAt('$.Secret')
+          }
+      }
     };
 
     const definition = DefinitionBody.fromChainable(addExecutionContext
@@ -206,27 +228,7 @@ export class AutoDump extends Construct {
     }));
 
 
-    // This secret is for testing. It should not live in this stack in the future.
-    const dumpSecret = new secretsmanager.Secret(this, "Secret", {
-      generateSecretString: {
-        secretStringTemplate: JSON.stringify(
-          {
-            "username": "autodump",
-            "port": "5432",
-            "databasename": "dumptest",
-            "endpoint": "database-1.cif5qyvrvmgx.us-west-2.rds.amazonaws.com",
-            "engine": "postgres",
-            "bucketname": autoDumpBucket.bucketName,
-          }
-        ),
-        generateStringKey: 'password',
-        excludePunctuation: true,
-        passwordLength: 16,
-      }
-    });
 
-    cdk.Tags.of(dumpSecret).add("autodump:start-schedule", "3 16 - - -");
-    // cdk.Tags.of(dumpSecret).add("autodump:timezone", "America/New_York");
 
     autoDumpBucket.addLifecycleRule({
       expiration: Duration.days(7), // specify the number of days after which objects should be deleted
