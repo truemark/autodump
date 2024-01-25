@@ -1,5 +1,5 @@
 import {Construct} from "constructs"
-import {IEventBus} from "aws-cdk-lib/aws-events"
+// import {IEventBus} from "aws-cdk-lib/aws-events"
 import {
   CompositePrincipal,
   Effect,
@@ -53,7 +53,6 @@ import {
 
 export interface AutoDumpProps {
   readonly tagPrefix?: string;
-  readonly eventBus?: IEventBus; // TODO This doesn't belong. Use the default event bus.
   readonly vpcId: string;
   readonly privateSubnetIds: string[];
   readonly availabilityZones: string[];
