@@ -1,5 +1,5 @@
 import {Construct} from "constructs"
-import {CompositePrincipal, Effect, ManagedPolicy, PolicyStatement, Role, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
+import {CompositePrincipal, Effect, ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
 import {AwsLogDriver, ContainerImage} from 'aws-cdk-lib/aws-ecs';
 import {Duration} from 'aws-cdk-lib/core';
 import {
@@ -151,7 +151,33 @@ export class AutoDump extends Construct {
       error: 'AutoDump failed with unspecified error.'
     });
 
-    // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
+    const ecsJobRole = new Role(this, "ecsJobRole", {
+      assumedBy: new CompositePrincipal(
+        new ServicePrincipal("batch.amazonaws.com"),
+        new ServicePrincipal("ecs-tasks.amazonaws.com"),
+        new ServicePrincipal("states.amazonaws.com")),
+      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")],
+    });
+
+    ecsJobRole.addToPolicy(new PolicyStatement({
+          actions: [
+            "secretsmanager:GetSecretValue"
+          ],
+          effect: Effect.ALLOW,
+          resources: ["*"]
+        }
+    ));
+
+    ecsJobRole.addToPolicy(new PolicyStatement({
+        actions: [
+          "s3:PutObject"
+        ],
+        effect: Effect.ALLOW,
+        resources: ["*"]
+      }
+    ));
+
+      // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
     // this is the only way it works
     const ecsJob = new EcsJobDefinition(this, 'JobDefinition', {
       container: new EcsFargateContainerDefinition(this, 'FargateAutoDumpDefinition', {
@@ -161,6 +187,7 @@ export class AutoDump extends Construct {
         executionRole: batchServiceRole,
         logging: logDriver,
         command: ["/usr/local/bin/dumpdb.sh"],
+        jobRole: ecsJobRole
       }),
     });
 
@@ -187,24 +214,18 @@ export class AutoDump extends Construct {
         destination: logGroup,
         level: LogLevel.ALL,
       },
-      role: batchServiceRole,
+      role: ecsJobRole,
       timeout: Duration.hours(6),
       comment: 'Database dump state machine.',
     });
 
+    stateMachine.grantStartExecution(scannerFunction);
     stateMachine.addToRolePolicy(new PolicyStatement({
       actions: ["batch:*"],
       effect: Effect.ALLOW,
       // conditions: {"StringEquals": tagCondition},
       resources: ["*"]
     }));
-
-    // stateMachine.addToRolePolicy(new PolicyStatement({
-    //   actions: ["ecr:GetAuthorizationToken"],
-    //   effect: Effect.ALLOW,
-    //   resources: [ecrRepository.repositoryArn]
-    // }));
-
 
     autoDumpBucket.addLifecycleRule({
       expiration: Duration.days(7), // specify the number of days after which objects should be deleted
