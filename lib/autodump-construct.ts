@@ -43,7 +43,6 @@ export class AutoDump extends Construct {
 
     const stackName = "autodump"
     const currentAccount = Stack.of(this).account;
-    // const currentRegion = Stack.of(this).region;
 
     const vpc = Vpc.fromVpcAttributes(this, 'Vpc', {
       vpcId: props.vpcId,
@@ -98,16 +97,6 @@ export class AutoDump extends Construct {
       conditions: {"StringEquals": tagCondition},
       resources: ["*"]
     }));
-
-    // batchServiceRole.addToPolicy(new PolicyStatement({
-    //   actions: [
-    //     "secretsmanager:GetSecretValue",
-    //     "secretsmanager:ListSecrets",
-    //     "secretsmanager:DescribeSecret"
-    //   ],
-    //   effect: Effect.ALLOW,
-    //   resources: ["*"]
-    // }));
 
     const autoDumpBucket = new Bucket(this, 'Archive', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,

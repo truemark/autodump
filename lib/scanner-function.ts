@@ -31,7 +31,6 @@ export class ScannerFunction extends NodejsFunction {
             actions: [
               "secretsmanager:DescribeSecret",
               "secretsmanager:ListSecrets",
-              // "secretsmanager:GetSecretValue",
               "states:StartExecution"
             ],
             resources: ["*"]
