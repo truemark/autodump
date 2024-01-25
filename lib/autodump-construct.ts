@@ -99,15 +99,15 @@ export class AutoDump extends Construct {
       resources: ["*"]
     }));
 
-    batchServiceRole.addToPolicy(new PolicyStatement({
-      actions: [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:ListSecrets",
-        "secretsmanager:DescribeSecret"
-      ],
-      effect: Effect.ALLOW,
-      resources: ["*"]
-    }));
+    // batchServiceRole.addToPolicy(new PolicyStatement({
+    //   actions: [
+    //     "secretsmanager:GetSecretValue",
+    //     "secretsmanager:ListSecrets",
+    //     "secretsmanager:DescribeSecret"
+    //   ],
+    //   effect: Effect.ALLOW,
+    //   resources: ["*"]
+    // }));
 
     const autoDumpBucket = new Bucket(this, 'Archive', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
@@ -175,7 +175,7 @@ export class AutoDump extends Construct {
           "s3:PutObject"
         ],
         effect: Effect.ALLOW,
-        resources: ["*"]
+        resources: [autoDumpBucket.bucketArn]
       }
     ));
 
