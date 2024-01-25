@@ -1,8 +1,15 @@
 import {Construct} from "constructs"
 import {IEventBus} from "aws-cdk-lib/aws-events"
-import * as Iam from "aws-cdk-lib/aws-iam"
-import * as ecr from 'aws-cdk-lib/aws-ecr';
-import {Duration, Fn} from 'aws-cdk-lib/core';
+import {
+  CompositePrincipal,
+  Effect,
+  ManagedPolicy,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from "aws-cdk-lib/aws-iam";
+import {ContainerImage} from 'aws-cdk-lib/aws-ecs';
+import {Duration} from 'aws-cdk-lib/core';
 import {
   DefinitionBody,
   Fail,
@@ -14,17 +21,35 @@ import {
   Wait,
   WaitTime
 } from "aws-cdk-lib/aws-stepfunctions";
-import * as logs from 'aws-cdk-lib/aws-logs';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import {LogGroup} from 'aws-cdk-lib/aws-logs';
+import {Secret} from 'aws-cdk-lib/aws-secretsmanager';
 import {ScannerFunction} from "./scanner-function";
-import * as Ec2 from "aws-cdk-lib/aws-ec2"
-import {Vpc} from 'aws-cdk-lib/aws-ec2';
-import * as batch from 'aws-cdk-lib/aws-batch';
-import {FargateComputeEnvironment, FargateComputeEnvironmentProps} from 'aws-cdk-lib/aws-batch';
-import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as cdk from "aws-cdk-lib";
-import * as s3 from "aws-cdk-lib/aws-s3";
-import {BatchSubmitJob, BatchSubmitJobProps} from "aws-cdk-lib/aws-stepfunctions-tasks";
+import {SubnetType} from "aws-cdk-lib/aws-ec2";
+import {Vpc} from "aws-cdk-lib/aws-ec2"
+import {
+  EcsFargateContainerDefinition,
+  EcsJobDefinition,
+  JobQueue
+} from 'aws-cdk-lib/aws-batch';
+import {
+  FargateComputeEnvironment,
+  FargateComputeEnvironmentProps
+} from 'aws-cdk-lib/aws-batch';
+import {AwsLogDriver} from "aws-cdk-lib/aws-ecs";
+import {
+  Size,
+  Stack,
+  Tags
+} from "aws-cdk-lib";
+import {
+  BlockPublicAccess,
+  Bucket,
+  BucketEncryption
+} from "aws-cdk-lib/aws-s3";
+import {
+  BatchSubmitJob,
+  BatchSubmitJobProps
+} from "aws-cdk-lib/aws-stepfunctions-tasks";
 
 export interface AutoDumpProps {
   readonly tagPrefix?: string;
@@ -39,8 +64,8 @@ export class AutoDump extends Construct {
     super(scope, id);
 
     const stackName = "autodump"
-    const currentAccount = cdk.Stack.of(this).account;
-    // const currentRegion = cdk.Stack.of(this).region;
+    const currentAccount = Stack.of(this).account;
+    // const currentRegion = Stack.of(this).region;
 
     const vpc = Vpc.fromVpcAttributes(this, 'Vpc', {
       vpcId: props.vpcId,
@@ -55,10 +80,10 @@ export class AutoDump extends Construct {
     // TODO: Write a function that queries all the possible private subnet types
     // so a subnet type error can be handled.
     const privateSubnets = vpc.selectSubnets({
-      subnetType: Ec2.SubnetType.PRIVATE_WITH_NAT,
+      subnetType: SubnetType.PRIVATE_WITH_NAT,
       // My sandbox has "PRIVATE_ISOLATED" private su
       // subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-      // subnetType: Ec2.SubnetType.PRIVATE_ISOLATED,
+      // subnetType: SubnetType.PRIVATE_ISOLATED,
     });
 
     const fargateComputeEnvironmentProps: FargateComputeEnvironmentProps = {
@@ -75,14 +100,14 @@ export class AutoDump extends Construct {
       new FargateComputeEnvironment(this, "fargateComputeEnvironment", fargateComputeEnvironmentProps);
 
     // Create the stack service role, allow batch, step functions and ecs as principals, attach required managed policies.
-    const batchServiceRole = new Iam.Role(this, "ServiceRole", {
-      assumedBy: new Iam.CompositePrincipal(
-        new Iam.ServicePrincipal("batch.amazonaws.com"),
-        new Iam.ServicePrincipal("ecs.amazonaws.com"),
-        new Iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-        new Iam.ServicePrincipal("states.amazonaws.com")),
-      managedPolicies: [Iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSBatchServiceRole"),
-        Iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")],
+    const batchServiceRole = new Role(this, "ServiceRole", {
+      assumedBy: new CompositePrincipal(
+        new ServicePrincipal("batch.amazonaws.com"),
+        new ServicePrincipal("ecs.amazonaws.com"),
+        new ServicePrincipal("ecs-tasks.amazonaws.com"),
+        new ServicePrincipal("states.amazonaws.com")),
+      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSBatchServiceRole"),
+        ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")],
     });
 
     // TODO: change this to reference enum somehow?
@@ -90,24 +115,24 @@ export class AutoDump extends Construct {
       'aws:RequestTag/autodump:start-schedule': 'true',
     };
 
-    batchServiceRole.addToPolicy(new Iam.PolicyStatement({
+    batchServiceRole.addToPolicy(new PolicyStatement({
       actions: ["batch:*"],
-      effect: Iam.Effect.ALLOW,
+      effect: Effect.ALLOW,
       conditions: {"StringEquals": tagCondition},
       resources: ["*"]
     }));
 
-    batchServiceRole.addToPolicy(new Iam.PolicyStatement({
+    batchServiceRole.addToPolicy(new PolicyStatement({
       actions: ["secretsmanager:GetSecretValue",
         "secretsmanager:ListSecrets",
         "secretsmanager:DescribeSecret"],
-      effect: Iam.Effect.ALLOW,
+      effect: Effect.ALLOW,
       resources: ["*"]
     }));
 
-    const autoDumpBucket = new s3.Bucket(this, 'Archive', {
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      encryption: s3.BucketEncryption.S3_MANAGED,
+    const autoDumpBucket = new Bucket(this, 'Archive', {
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       versioned: false,
     });
@@ -123,8 +148,8 @@ export class AutoDump extends Construct {
       }
     });
 
-    const logGroup = new logs.LogGroup(this, "logGroup", {});
-    const logDriver = new ecs.AwsLogDriver({
+    const logGroup = new LogGroup(this, "logGroup", {});
+    const logDriver = new AwsLogDriver({
       streamPrefix: `${stackName}-`,
       logGroup: logGroup,
     });
@@ -133,11 +158,7 @@ export class AutoDump extends Construct {
       "time": WaitTime.timestampPath("$.When")
     });
 
-    const ecrRepository = new ecr.Repository(this, "ecrRepository", {});
-
-    const ecsImage = ecrRepository.repositoryUriForTag("latest");
-
-    const jobQueue = new batch.JobQueue(this, "jobQueue", {
+    const jobQueue = new JobQueue(this, "jobQueue", {
       computeEnvironments: [{
         computeEnvironment,
         order: 1,
@@ -153,8 +174,75 @@ export class AutoDump extends Construct {
       error: 'AutoDump failed with unspecified error.'
     });
 
+    // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
+    // this is the only way it works
+    const ecsJob = new EcsJobDefinition(this, 'JobDefinition', {
+      container: new EcsFargateContainerDefinition(this, 'FargateAutoDumpDefinition', {
+        image: ContainerImage.fromRegistry('public.ecr.aws/truemark/autodump:latest'),
+        memory: Size.gibibytes(2),
+        cpu: 1,
+        executionRole: batchServiceRole,
+        logging: logDriver,
+        command: ["/usr/local/bin/dumpdb.sh"],
+      }),
+    });
+
+    const batchSubmitJobProps: BatchSubmitJobProps = {
+      jobDefinitionArn: ecsJob.jobDefinitionArn,
+      jobName: ecsJob.jobDefinitionName,
+      jobQueueArn: jobQueue.jobQueueArn,
+      containerOverrides: {
+        environment: {
+          "SECRET_ARN": JsonPath.stringAt('$.Secret')
+        }
+      }
+    };
+
+    const definition = DefinitionBody.fromChainable(addExecutionContext
+      .next(wait)
+      .next(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))
+      .next(jobSuccess)
+    );
+
+    const stateMachine = new StateMachine(this, "Default", {
+      definitionBody: definition,
+      logs: {
+        destination: logGroup,
+        level: LogLevel.ALL,
+      },
+      role: batchServiceRole,
+      timeout: Duration.hours(6),
+      comment: 'Database dump state machine.',
+    });
+
+    stateMachine.addToRolePolicy(new PolicyStatement({
+      actions: ["batch:*"],
+      effect: Effect.ALLOW,
+      // conditions: {"StringEquals": tagCondition},
+      resources: ["*"]
+    }));
+
+    // stateMachine.addToRolePolicy(new PolicyStatement({
+    //   actions: ["ecr:GetAuthorizationToken"],
+    //   effect: Effect.ALLOW,
+    //   resources: [ecrRepository.repositoryArn]
+    // }));
+
+
+    autoDumpBucket.addLifecycleRule({
+      expiration: Duration.days(7), // specify the number of days after which objects should be deleted
+      enabled: true,
+    });
+
+    batchServiceRole.addToPolicy(new PolicyStatement({
+      actions: ["s3:PutObject"],
+      effect: Effect.ALLOW,
+      resources: [autoDumpBucket.bucketArn]
+    }));
+
+
     // This secret is for testing. It should not live in this stack in the future.
-    const dumpSecret = new secretsmanager.Secret(this, "Secret", {
+    const dumpSecret = new Secret(this, "Secret", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify(
           {
@@ -172,75 +260,8 @@ export class AutoDump extends Construct {
       }
     });
 
-    cdk.Tags.of(dumpSecret).add("autodump:start-schedule", "3 16 - - -");
-    // cdk.Tags.of(dumpSecret).add("autodump:timezone", "America/New_York");
-    // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
-    // this is the only way it works
-    const ecsJob = new batch.EcsJobDefinition(this, 'JobDefn', {
-      container: new batch.EcsFargateContainerDefinition(this, 'FargateAutoDumpDefinition', {
-        image: ecs.ContainerImage.fromRegistry(ecsImage),
-        memory: cdk.Size.gibibytes(2),
-        cpu: 1,
-        executionRole: batchServiceRole,
-        logging: logDriver,
-        command: ["/app/dumpdb.sh"],
-      }),
-    });
-
-    const batchSubmitJobProps: BatchSubmitJobProps = {
-      jobDefinitionArn: ecsJob.jobDefinitionArn,
-      jobName: ecsJob.jobDefinitionName,
-      jobQueueArn: jobQueue.jobQueueArn,
-      containerOverrides: {
-        environment:           {
-           "SECRET_ARN" :  JsonPath.stringAt('$.Secret')
-          }
-      }
-    };
-
-    const definition = DefinitionBody.fromChainable(addExecutionContext
-      .next(wait)
-      .next(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))
-      .next(jobSuccess)
-    );
-
-    const stateMachine = new StateMachine(this, "Default", {
-      definitionBody: definition,
-      logs: {
-        destination: logGroup,
-        level: LogLevel.ALL,
-      },
-      role: batchServiceRole,
-      timeout: cdk.Duration.hours(6),
-      comment: 'Database dump state machine.',
-    });
-
-    stateMachine.addToRolePolicy(new Iam.PolicyStatement({
-      actions: ["batch:*"],
-      effect: Iam.Effect.ALLOW,
-      // conditions: {"StringEquals": tagCondition},
-      resources: ["*"]
-    }));
-    stateMachine.addToRolePolicy(new Iam.PolicyStatement({
-      actions: ["ecr:GetAuthorizationToken"],
-      effect: Iam.Effect.ALLOW,
-      resources: [ecrRepository.repositoryArn]
-    }));
-
-
-
-
-    autoDumpBucket.addLifecycleRule({
-      expiration: Duration.days(7), // specify the number of days after which objects should be deleted
-      enabled: true,
-    });
-
-    batchServiceRole.addToPolicy(new Iam.PolicyStatement({
-      actions: ["s3:PutObject"],
-      effect: Iam.Effect.ALLOW,
-      resources: [autoDumpBucket.bucketArn]
-    }));
-
+    Tags.of(dumpSecret).add("autodump:start-schedule", "3 16 - - -");
+    // Tags.of(dumpSecret).add("autodump:timezone", "America/New_York");
 
   }
 }
