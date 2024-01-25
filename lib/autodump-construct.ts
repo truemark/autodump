@@ -3,6 +3,8 @@ import {CompositePrincipal, Effect, ManagedPolicy, Policy, PolicyDocument, Polic
 import {AwsLogDriver, ContainerImage} from 'aws-cdk-lib/aws-ecs';
 import {Duration} from 'aws-cdk-lib/core';
 import {
+  Choice,
+  Condition,
   DefinitionBody,
   Fail,
   JsonPath,
@@ -205,8 +207,10 @@ export class AutoDump extends Construct {
     const definition = DefinitionBody.fromChainable(addExecutionContext
       .next(wait)
       .next(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))
-      .next(jobSuccess)
-    );
+      .next(new Choice (this, 'Evaluate job completion status')
+        .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
+        .otherwise(jobFailed)
+    ));
 
     const stateMachine = new StateMachine(this, "Default", {
       definitionBody: definition,
