@@ -1,14 +1,6 @@
 import {Construct} from "constructs"
-// import {IEventBus} from "aws-cdk-lib/aws-events"
-import {
-  CompositePrincipal,
-  Effect,
-  ManagedPolicy,
-  PolicyStatement,
-  Role,
-  ServicePrincipal,
-} from "aws-cdk-lib/aws-iam";
-import {ContainerImage} from 'aws-cdk-lib/aws-ecs';
+import {CompositePrincipal, Effect, ManagedPolicy, PolicyStatement, Role, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
+import {AwsLogDriver, ContainerImage} from 'aws-cdk-lib/aws-ecs';
 import {Duration} from 'aws-cdk-lib/core';
 import {
   DefinitionBody,
@@ -24,32 +16,17 @@ import {
 import {LogGroup} from 'aws-cdk-lib/aws-logs';
 import {Secret} from 'aws-cdk-lib/aws-secretsmanager';
 import {ScannerFunction} from "./scanner-function";
-import {SubnetType} from "aws-cdk-lib/aws-ec2";
-import {Vpc} from "aws-cdk-lib/aws-ec2"
+import {SubnetType, Vpc} from "aws-cdk-lib/aws-ec2";
 import {
   EcsFargateContainerDefinition,
   EcsJobDefinition,
+  FargateComputeEnvironment,
+  FargateComputeEnvironmentProps,
   JobQueue
 } from 'aws-cdk-lib/aws-batch';
-import {
-  FargateComputeEnvironment,
-  FargateComputeEnvironmentProps
-} from 'aws-cdk-lib/aws-batch';
-import {AwsLogDriver} from "aws-cdk-lib/aws-ecs";
-import {
-  Size,
-  Stack,
-  Tags
-} from "aws-cdk-lib";
-import {
-  BlockPublicAccess,
-  Bucket,
-  BucketEncryption
-} from "aws-cdk-lib/aws-s3";
-import {
-  BatchSubmitJob,
-  BatchSubmitJobProps
-} from "aws-cdk-lib/aws-stepfunctions-tasks";
+import {Size, Stack, Tags} from "aws-cdk-lib";
+import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
+import {BatchSubmitJob, BatchSubmitJobProps} from "aws-cdk-lib/aws-stepfunctions-tasks";
 
 export interface AutoDumpProps {
   readonly tagPrefix?: string;
@@ -68,7 +45,7 @@ export class AutoDump extends Construct {
 
     const vpc = Vpc.fromVpcAttributes(this, 'Vpc', {
       vpcId: props.vpcId,
-      availabilityZones: props.availabilityZones, // TODO Add to props
+      availabilityZones: props.availabilityZones,
       privateSubnetIds: props.privateSubnetIds,
     });
 
@@ -109,7 +86,6 @@ export class AutoDump extends Construct {
         ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")],
     });
 
-    // TODO: change this to reference enum somehow?
     const tagCondition = {
       'aws:RequestTag/autodump:start-schedule': 'true',
     };
@@ -122,9 +98,11 @@ export class AutoDump extends Construct {
     }));
 
     batchServiceRole.addToPolicy(new PolicyStatement({
-      actions: ["secretsmanager:GetSecretValue",
+      actions: [
+        "secretsmanager:GetSecretValue",
         "secretsmanager:ListSecrets",
-        "secretsmanager:DescribeSecret"],
+        "secretsmanager:DescribeSecret"
+      ],
       effect: Effect.ALLOW,
       resources: ["*"]
     }));
