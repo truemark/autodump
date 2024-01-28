@@ -136,6 +136,13 @@ function getTags(tags?: Tags[]): AutoDumpTags {
 export async function handler(event: any): Promise<any> {
 
   const stateMachineArn = event.StateMachineArn;
+  const input = event;
+
+  // if (input.SecretArn) {
+  //   console.log(`Fetching secret hash for ${input.SecretArn}, input is ${input}`)
+  // }
+
+  console.log(`\n\nhandler: state machine arn is ${stateMachineArn}, input is ${input}\n`);
 
   const listSecretsRequest = {
     MaxResults: 100,
@@ -173,15 +180,23 @@ export async function handler(event: any): Promise<any> {
                   tagsHash: hashTagsV1(tags),
                   when: nextTime.when,
                 });
-                console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
 
-                // startExecution(stateMachineArn, action[0]);
-                const startStateMachineReponse = await sfnClient.send(new StartExecutionCommand({
-                  stateMachineArn: stateMachineArn,
-                  input: JSON.stringify(action[0])
-                }));
 
-                console.log('post execution')
+                if (input.SecretArn) {
+                  return hashTagsV1(tags);
+                } else {
+
+
+                  console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
+
+                  // startExecution(stateMachineArn, action[0]);
+                  const startStateMachineReponse = await sfnClient.send(new StartExecutionCommand({
+                    stateMachineArn: stateMachineArn,
+                    input: JSON.stringify(action[0])
+                  }));
+
+                  console.log('post execution')
+                }
               }
             }
           }
