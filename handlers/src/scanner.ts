@@ -32,7 +32,8 @@ enum AutoDumpTag {
   TIMEZONE = "autodump:timezone",
 }
 
-const client = new SecretsManagerClient({region: "us-west-2"});
+const currentRegion = process.env.AWS_REGION;
+const client = new SecretsManagerClient({region: currentRegion});
 const sfnClient = new SFNClient({});
 
 export function cyrb53(str: string, seed: number = 0): number {
