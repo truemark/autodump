@@ -28,7 +28,7 @@ import {
 } from 'aws-cdk-lib/aws-batch';
 import {Size, Stack, Tags} from "aws-cdk-lib";
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
-import {BatchSubmitJob, BatchSubmitJobProps} from "aws-cdk-lib/aws-stepfunctions-tasks";
+import {BatchSubmitJob, BatchSubmitJobProps, LambdaInvoke} from "aws-cdk-lib/aws-stepfunctions-tasks";
 
 export interface AutoDumpProps {
   readonly tagPrefix?: string;
@@ -168,7 +168,7 @@ export class AutoDump extends Construct {
       }
     ));
 
-      // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
+    // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
     // this is the only way it works
     const ecsJob = new EcsJobDefinition(this, 'JobDefinition', {
       container: new EcsFargateContainerDefinition(this, 'FargateAutoDumpDefinition', {
@@ -195,6 +195,10 @@ export class AutoDump extends Construct {
 
     const definition = DefinitionBody.fromChainable(addExecutionContext
       .next(wait)
+      .next(new LambdaInvoke(this, 'Fetch current secret tag hash value', {
+        lambdaFunction: scannerFunction,
+        outputPath: '$.Payload',
+      }))
       .next(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))
       .next(new Choice (this, 'Evaluate job completion status')
         .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
