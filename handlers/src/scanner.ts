@@ -2,6 +2,7 @@ import {SecretsManagerClient, ListSecretsCommand, Tag as Tags} from "@aws-sdk/cl
 import * as cron from "cron-parser";
 import {CronExpression} from "cron-parser/types"
 import {SFNClient, StartExecutionCommand} from "@aws-sdk/client-sfn"
+import {error} from "aws-cdk/lib/logging";
 
 interface AutoDumpTags {
   readonly timezone?: string;
@@ -122,7 +123,6 @@ function getTags(tags?: Tags[]): AutoDumpTags {
   const autoDumpTags = tags.reduce((tags, tag) => {
     const autoDumpTags: Record<string, string> = {};
     if (tag.Key && tag.Value && Object.values(AutoDumpTag).includes(tag.Key as AutoDumpTag)) {
-      // if (tag.Key && tag.Value && (tag.Key === AutoDumpTag.START_SCHEDULE || tag.Key === AutoDumpTag.TIMEZONE)) {
       const key = toCamelCase(tag.Key.replace("autodump:", ""));
       autoDumpTags[key] = tag.Value.trim();
     }
@@ -136,13 +136,19 @@ function getTags(tags?: Tags[]): AutoDumpTags {
 export async function handler(event: any): Promise<any> {
 
   const stateMachineArn = event.StateMachineArn;
-  const input = event;
+  const secretArn = event.SecretArn;
 
   // if (input.SecretArn) {
   //   console.log(`Fetching secret hash for ${input.SecretArn}, input is ${input}`)
   // }
 
-  console.log(`\n\nhandler: state machine arn is ${stateMachineArn}, input is ${input}\n`);
+  console.log(`\n\nhandler: state machine arn is ${stateMachineArn}, secret arn is ${secretArn}\n`);
+
+  // This can't live here. I'd need to jump hoops to get the secret tags again.
+  // if (secretArn) {
+  //   console.log('returning hashTagsV1 for secretArn')
+  //   return hashTagsV1(tags);
+  // }
 
   const listSecretsRequest = {
     MaxResults: 100,
@@ -181,22 +187,18 @@ export async function handler(event: any): Promise<any> {
                   when: nextTime.when,
                 });
 
-
-                if (input.SecretArn) {
+                // cheap copout
+                if (secretArn) {
+                  console.log('returning hashTagsV1 for secretArn')
                   return hashTagsV1(tags);
-                } else {
-
-
-                  console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
-
-                  // startExecution(stateMachineArn, action[0]);
-                  const startStateMachineReponse = await sfnClient.send(new StartExecutionCommand({
-                    stateMachineArn: stateMachineArn,
-                    input: JSON.stringify(action[0])
-                  }));
-
-                  console.log('post execution')
                 }
+
+                console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
+                const startStateMachineResponse = await sfnClient.send(new StartExecutionCommand({
+                  stateMachineArn: stateMachineArn,
+                  input: JSON.stringify(action[0])
+                }));
+                console.log('post execution')
               }
             }
           }
