@@ -5,7 +5,6 @@ import {SFNClient, StartExecutionCommand} from "@aws-sdk/client-sfn"
 import {error} from "aws-cdk/lib/logging";
 import * as arnparser from "@aws-sdk/util-arn-parser"
 
-
 interface AutoDumpTags {
   readonly timezone?: string;
   readonly startSchedule?: string;
@@ -34,7 +33,8 @@ enum AutoDumpTag {
   TIMEZONE = "autodump:timezone",
 }
 
-const client = new SecretsManagerClient({region: "us-west-2"});
+const currentRegion = process.env.AWS_REGION;
+const client = new SecretsManagerClient({region: currentRegion});
 const sfnClient = new SFNClient({});
 
 export function cyrb53(str: string, seed: number = 0): number {
@@ -178,14 +178,16 @@ export async function listSecrets(event: any): Promise<any> {
                   when: nextTime.when,
                 });
 
-                const secretName = arnparser.parse(secret.Arn.toString()).resource.split(":")[6]
-                console.log(`starting state machine execution: secretName is ${secretName}, nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
+                const epoch = Date.now();
+                const jobName = secret.Name + "-" + epoch
+
+                console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
+
                 const startStateMachineResponse = await sfnClient.send(new StartExecutionCommand({
                   stateMachineArn: stateMachineArn,
                   input: JSON.stringify(action[0]),
-                  // name:
+                  name: jobName.slice(0,80)
                 }));
-                console.log('post execution')
               }
             }
           }
