@@ -13,7 +13,7 @@ interface ScannerFunctionProps {
 export class ScannerFunction extends NodejsFunction {
     constructor(scope: Construct, id: string, props: ScannerFunctionProps) {
         super(scope, id, {
-            runtime: Runtime.NODEJS_18_X,
+            runtime: Runtime.NODEJS_20_X,
             architecture: Architecture.ARM_64,
             memorySize: 512,
             timeout: Duration.seconds(40),

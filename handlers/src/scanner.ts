@@ -3,6 +3,8 @@ import * as cron from "cron-parser";
 import {CronExpression} from "cron-parser/types"
 import {SFNClient, StartExecutionCommand} from "@aws-sdk/client-sfn"
 import {error} from "aws-cdk/lib/logging";
+import * as arnparser from "@aws-sdk/util-arn-parser"
+
 
 interface AutoDumpTags {
   readonly timezone?: string;
@@ -133,22 +135,11 @@ function getTags(tags?: Tags[]): AutoDumpTags {
   return autoDumpTags;
 }
 
-export async function handler(event: any): Promise<any> {
+export async function listSecrets(event: any): Promise<any> {
 
   const stateMachineArn = event.StateMachineArn;
   const secretArn = event.SecretArn;
-
-  // if (input.SecretArn) {
-  //   console.log(`Fetching secret hash for ${input.SecretArn}, input is ${input}`)
-  // }
-
   console.log(`\n\nhandler: state machine arn is ${stateMachineArn}, secret arn is ${secretArn}\n`);
-
-  // This can't live here. I'd need to jump hoops to get the secret tags again.
-  // if (secretArn) {
-  //   console.log('returning hashTagsV1 for secretArn')
-  //   return hashTagsV1(tags);
-  // }
 
   const listSecretsRequest = {
     MaxResults: 100,
@@ -187,16 +178,12 @@ export async function handler(event: any): Promise<any> {
                   when: nextTime.when,
                 });
 
-                // cheap copout
-                if (secretArn) {
-                  console.log('returning hashTagsV1 for secretArn')
-                  return hashTagsV1(tags);
-                }
-
-                console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
+                const secretName = arnparser.parse(secret.Arn.toString()).resource.split(":")[6]
+                console.log(`starting state machine execution: secretName is ${secretName}, nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
                 const startStateMachineResponse = await sfnClient.send(new StartExecutionCommand({
                   stateMachineArn: stateMachineArn,
-                  input: JSON.stringify(action[0])
+                  input: JSON.stringify(action[0]),
+                  // name:
                 }));
                 console.log('post execution')
               }
@@ -223,3 +210,9 @@ export async function handler(event: any): Promise<any> {
     }),
   };
 }
+
+export async function fetchHash(secretArn: string): Promise<string> {
+
+}
+
+export async handler

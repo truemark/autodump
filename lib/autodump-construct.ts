@@ -193,12 +193,19 @@ export class AutoDump extends Construct {
       }
     };
 
+    const invokeScanner: LambdaInvoke = new LambdaInvoke(this, 'Invoke scanner function', {
+      lambdaFunction: scannerFunction,
+      outputPath: '$.Payload',
+    });
+
+
+    const fetchHash: LambdaInvoke = new LambdaInvoke(this, 'Fetch current secret tag hash value', {
+      lambdaFunction: scannerFunction,
+    });
+
     const definition = DefinitionBody.fromChainable(addExecutionContext
       .next(wait)
-      .next(new LambdaInvoke(this, 'Fetch current secret tag hash value', {
-        lambdaFunction: scannerFunction,
-        outputPath: '$.Payload',
-      }))
+      .next(invokeScanner)
       .next(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))
       .next(new Choice (this, 'Evaluate job completion status')
         .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
