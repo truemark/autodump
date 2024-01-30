@@ -3,6 +3,7 @@ import * as cron from "cron-parser";
 import {CronExpression} from "cron-parser/types"
 import {SFNClient, StartExecutionCommand} from "@aws-sdk/client-sfn"
 import {error} from "aws-cdk/lib/logging";
+import * as arnparser from "@aws-sdk/util-arn-parser"
 
 interface AutoDumpTags {
   readonly timezone?: string;
@@ -188,18 +189,16 @@ export async function handler(event: any): Promise<any> {
                   when: nextTime.when,
                 });
 
-                // cheap copout
-                if (secretArn) {
-                  console.log('returning hashTagsV1 for secretArn')
-                  return hashTagsV1(tags);
-                }
+                const epoch = Date.now();
+                const jobName = secret.Name + "-" + epoch
 
                 console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
+
                 const startStateMachineResponse = await sfnClient.send(new StartExecutionCommand({
                   stateMachineArn: stateMachineArn,
-                  input: JSON.stringify(action[0])
+                  input: JSON.stringify(action[0]),
+                  name: jobName.slice(0,80)
                 }));
-                console.log('post execution')
               }
             }
           }
