@@ -1,6 +1,6 @@
 import {NodejsFunction} from "aws-cdk-lib/aws-lambda-nodejs"
 import {Construct} from "constructs"
-import {Architecture, Runtime, Code} from "aws-cdk-lib/aws-lambda"
+import {Architecture, Runtime} from "aws-cdk-lib/aws-lambda"
 import {Duration} from "aws-cdk-lib"
 import {RetentionDays} from "aws-cdk-lib/aws-logs"
 import * as path from "path";
@@ -25,15 +25,26 @@ export class ScannerFunction extends NodejsFunction {
             },
         });
 
-        // This function does not inherit permissions from the stack. They need
-        // to be explicitly added here.
-        this.addToRolePolicy(new PolicyStatement({
-            actions: [
-              "secretsmanager:DescribeSecret",
-              "secretsmanager:ListSecrets",
-              "states:StartExecution"
-            ],
-            resources: ["*"]
-        }));
+
+      this.addToRolePolicy(new PolicyStatement({
+        actions: ['states:StartExecution'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:PrincipalType': 'Service',
+          },
+        },
+      }));
+
+      this.addToRolePolicy(new PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue', "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecrets"],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:PrincipalType': 'Service',
+          },
+        },
+      }));
     }
 }

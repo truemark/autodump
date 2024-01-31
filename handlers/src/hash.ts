@@ -1,102 +1,74 @@
-import {SecretsManagerClient, Tag as Tags} from "@aws-sdk/client-secrets-manager";
-import * as cron from "cron-parser";
-import {CronExpression} from "cron-parser/types";
-import {ISecret, Secret } from "aws-cdk-lib/aws-secretsmanager";
-import {AutoDump, AutoDumpProps} from "../../lib/autodump-construct";
-import {Construct} from "constructs";
-interface AutoDumpTags {
-  readonly timezone?: string;
-  readonly startSchedule?: string;
+// import {SecretsManagerClient, ListSecretsCommand, Tag as Tags} from "@aws-sdk/client-secrets-manager";
+// import {Secret, fromSecretCompleteArn } from "@aws-cdk-lib/aws-secretsmanager";
+import {AutoDumpTags} from "./hash-helper";
+
+interface AutoDumpAction {
+  readonly resourceId: string;
+  readonly tagsHash: string;
+  readonly when: string;
 }
 
-enum AutoDumpTag {
-  START_SCHEDULE = "autodump:start-schedule",
-  TIMEZONE = "autodump:timezone",
+interface AutoDumpActionResult extends AutoDumpAction {
+  readonly execute: boolean,
+  readonly reason: string,
+  readonly resource?: AutoDumpResource
 }
 
-export class fetchHash extends Construct {
+interface AutoDumpResource {
+  readonly id: string;
+  readonly tags: AutoDumpTags;
+  readonly tagsHash: string;
+}
 
-  constructor(scope: Construct, id: string, props: AutoDumpProps, event: any) {
-    super(scope, id);
+// const currentRegion = process.env.AWS_REGION;
+export async function handler(event: any): Promise<any> {
+  const secretArn = event.Execution.secretArn;
+  const hash = event.Execution.hash;
 
-    function cyrb53(str: string, seed: number = 0): number {
-      let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
-      for (let i = 0, ch; i < str.length; i++) {
-        ch = str.charCodeAt(i);
-        h1 = Math.imul(h1 ^ ch, 2654435761);
-        h2 = Math.imul(h2 ^ ch, 1597334677);
-      }
-      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
-      h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
-      h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-
-      return 4294967296 * (2097151 & h2) + (h1 >>> 0);
-    }
-
-    function hashTagsV1(tags: AutoDumpTags): string {
-      return "V1" + cyrb53(`${tags.timezone ?? ""}|${tags.startSchedule ?? ""}`);
-    }
-
-    function optionalCron(value: string | undefined, tz: string): CronExpression | undefined {
-      if (value) {
-        const parts = value.split(/\s+/);
-        if (parts.length !== 5) {
-          throw new Error(`Invalid cron expression: ${value}. Expecting 5 fields and received ${parts.length}}`);
-        }
-        if (parts[0].trim() === "*" || parts[0].trim() === "-") {
-          throw new Error("Invalid cron expression. The use * or - in the minute field is not allowed.");
-        }
-        const cleaned = value.trim().replaceAll(" -", " *").replaceAll(":", ",");
-        return cron.parseExpression(cleaned, {
-          tz,
-          currentDate: new Date(Date.now() + 60000), // look 1 minute in the future to be safe
-        })
-      }
-      return undefined;
-    }
-
-    function toCamelCase(str: string): string {
-      str = (str.match(/[a-zA-Z0-9]+/g) || []).map(x => `${x.charAt(0).toUpperCase()}${x.slice(1)}`).join("");
-      return str.charAt(0).toLowerCase() + str.slice(1);
-    }
-
-    function getTags(tags?: Tags[]): AutoDumpTags {
-      if (!tags) {
-        return {};
-      }
-
-      const autoDumpTags = tags.reduce((tags, tag) => {
-        const autoDumpTags: Record<string, string> = {};
-        if (tag.Key && tag.Value && Object.values(AutoDumpTag).includes(tag.Key as AutoDumpTag)) {
-          const key = toCamelCase(tag.Key.replace("autodump:", ""));
-          autoDumpTags[key] = tag.Value.trim();
-        }
-        return {
-          ...autoDumpTags
-        }
-      }, {} as AutoDumpTags) ?? {};
-      return autoDumpTags;
-    }
+  // // const tagsHash : string;
+  // // const secretArn = event.SecretArn;
+  // console.log(`\n\nfetch hash handler:  secret arn is ${secretArn}\n`);
+  //
+  //
+  // console.log(`\n\nhandler: secret arn is ${secretArn}\n`);
+  // try {
+  //   if (secretArn === undefined) {
+  //     console.log(`secretArn is undefined, exiting.`);
+  //     return {
+  //       statusCode: 400,
+  //       body: JSON.stringify({
+  //         message: `Error fetching current hash for secret. ${error}`,
+  //       }),
+  //     }
+  //   } else {
+  //
+  //     console.log(`\n\nhandler: secret arn is ${secretArn}\n`);
+  //     const tagsHash = await autoDump.getTagsHash(secretArn);
+  //     console.log(`\n\nhandler: hash is ${tagsHash}\n`);
+  //   }
+  // } catch (error) {
+  //   console.error(`late error fetching current hash for secret: ${error}`);
+  //   return {
+  //     statusCode: 400,
+  //     body: JSON.stringify({
+  //       message: `Error fetching secret hash. ${error}`,
+  //     }),
+  //   }
+  // }
 
 
-  const handler = async (event: any): Promise<any> =>{
-  try {
+  // Do logic
+  // get secret
+  // get tags on secret
+  // calculate tags on secret
+  // compare hashes and decide to continue or not
 
-    const currentRegion = process.env.AWS_REGION;
-    const secretArn = event.SecretArn;
-    const secret = Secret.fromSecretCompleteArn(this, this.node.id, secretArn);
-    return secret;
-
-
-  } catch (error) {
-    console.error("Error fetching secret hash:", error);
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: `Error fetching secret hash: ${error}`,
-      }),
-    }}}
+  // This is your raw output for your step in your step function
+  return {
+    hash,
+    secretArn,
+    execute: false, // This is what you use in your choice to bail out
+    reason: 'Some reason', // This is your reason for bailing that helps you when debugging
+    // whatever else you need to pass to the next step
   }
 }
-

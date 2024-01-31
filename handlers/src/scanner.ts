@@ -1,14 +1,13 @@
-import {SecretsManagerClient, ListSecretsCommand, Tag as Tags} from "@aws-sdk/client-secrets-manager";
+import {SecretsManagerClient, ListSecretsCommand} from "@aws-sdk/client-secrets-manager";
 import * as cron from "cron-parser";
 import {CronExpression} from "cron-parser/types"
 import {SFNClient, StartExecutionCommand} from "@aws-sdk/client-sfn"
-import {error} from "aws-cdk/lib/logging";
-import * as arnparser from "@aws-sdk/util-arn-parser"
+import {AutoDumpTag, AutoDumpTags, getTags, hashTagsV1} from "./hash-helper"
 
-interface AutoDumpTags {
-  readonly timezone?: string;
-  readonly startSchedule?: string;
-}
+// interface AutoDumpTags {
+//   readonly timezone?: string;
+//   readonly startSchedule?: string;
+// }
 
 interface AutoDumpAction {
   readonly resourceId: string;
@@ -28,33 +27,15 @@ interface AutoDumpResource {
   readonly tagsHash: string;
 }
 
-enum AutoDumpTag {
-  START_SCHEDULE = "autodump:start-schedule",
-  TIMEZONE = "autodump:timezone",
-}
+// enum AutoDumpTag {
+//   START_SCHEDULE = "autodump:start-schedule",
+//   TIMEZONE = "autodump:timezone",
+// }
 
 const currentRegion = process.env.AWS_REGION;
 const client = new SecretsManagerClient({region: currentRegion});
 const sfnClient = new SFNClient({});
 
-export function cyrb53(str: string, seed: number = 0): number {
-  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
-  for (let i = 0, ch; i < str.length; i++) {
-    ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
-  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
-  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-
-  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
-}
-
-function hashTagsV1(tags: AutoDumpTags): string {
-  return "V1" + cyrb53(`${tags.timezone ?? ""}|${tags.startSchedule ?? ""}`);
-}
 
 function optionalCron(value: string | undefined, tz: string): CronExpression | undefined {
   if (value) {
@@ -112,34 +93,11 @@ function nextAction(resource: AutoDumpResource, priorAction?: AutoDumpAction): A
   return selected;
 }
 
-function toCamelCase(str: string): string {
-  str = (str.match(/[a-zA-Z0-9]+/g) || []).map(x => `${x.charAt(0).toUpperCase()}${x.slice(1)}`).join("");
-  return str.charAt(0).toLowerCase() + str.slice(1);
-}
 
-function getTags(tags?: Tags[]): AutoDumpTags {
-  if (!tags) {
-    return {};
-  }
+export async function listSecrets(stateMachineArn: string): Promise<any> {
 
-  const autoDumpTags = tags.reduce((tags, tag) => {
-    const autoDumpTags: Record<string, string> = {};
-    if (tag.Key && tag.Value && Object.values(AutoDumpTag).includes(tag.Key as AutoDumpTag)) {
-      const key = toCamelCase(tag.Key.replace("autodump:", ""));
-      autoDumpTags[key] = tag.Value.trim();
-    }
-    return {
-      ...autoDumpTags
-    }
-  }, {} as AutoDumpTags) ?? {};
-  return autoDumpTags;
-}
-
-export async function listSecrets(event: any): Promise<any> {
-
-  const stateMachineArn = event.StateMachineArn;
-  const secretArn = event.SecretArn;
-  console.log(`\n\nhandler: state machine arn is ${stateMachineArn}, secret arn is ${secretArn}\n`);
+  // const stateMachineArn = event.StateMachineArn;
+  console.log(`handler: state machine arn is ${stateMachineArn}`);
 
   const listSecretsRequest = {
     MaxResults: 100,
@@ -213,8 +171,22 @@ export async function listSecrets(event: any): Promise<any> {
   };
 }
 
-export async function fetchHash(secretArn: string): Promise<string> {
+// export async function fetchHash(secretArn: string): Promise<any> {
+//
+// }
+
+export async function handler(event: any): Promise<any> {
+  const stateMachineArn = event.StateMachineArn;
+  // const secretArn = event.SecretArn;
+  // console.log(`\n\nhandler: state machine arn is ${stateMachineArn}, secret arn is ${secretArn}\n`);
+
+  if (stateMachineArn !== undefined ) {
+    console.log(`\n\nhandler: state machine arn is ${stateMachineArn}\n`);
+    listSecrets(stateMachineArn);
+
+  } else {
+    console.log(`\n\nhandler: no state machine arn provided\n`);
+    throw new Error("No state machine arn provided")
+  }
 
 }
-
-export async handler
