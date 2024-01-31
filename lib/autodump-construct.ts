@@ -188,15 +188,16 @@ export class AutoDump extends Construct {
       jobQueueArn: jobQueue.jobQueueArn,
       containerOverrides: {
         environment: {
-          "SECRET_ARN": JsonPath.stringAt('$.Secret')
-        }
+          // "SECRET_ARN": JsonPath.stringAt('$.Secret'),
+          "SECRET_ARN": JsonPath.stringAt('$.Secret'),
+        },
       }
     };
 
-    const getHash = new LambdaInvoke(this, "Get Hash", {
+    const getHash = new LambdaInvoke(this, "GetHash", {
       lambdaFunction: hashFunction,
       inputPath: "$",
-      outputPath: "$.Payload"
+      resultPath: "$.LambdaOutput"
     });
 
 
@@ -204,12 +205,13 @@ export class AutoDump extends Construct {
       .next(wait)
       .next(getHash)
       .next(new Choice(this, 'Hashes match?')
-        .when(Condition.booleanEquals('$.execute', false), jobFailed)
-        .otherwise(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))))
-    //   .next(new Choice (this, 'Evaluate job completion status')
-    //     .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
-    //     .otherwise(jobFailed)
-    // ));
+        .when(Condition.booleanEquals('$.LambdaOutput.Payload.execute', false), jobFailed)
+        .when(Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
+          new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps).next(new Choice(this, 'Job succeeded')
+            .when(Condition.stringEquals('$.status', 'SUCCEEDED'), jobSuccess)
+            .otherwise(jobFailed)
+          ))));
+
 
     const stateMachine = new StateMachine(this, "Default", {
       definitionBody: definition,
@@ -226,7 +228,6 @@ export class AutoDump extends Construct {
     stateMachine.addToRolePolicy(new PolicyStatement({
       actions: ["batch:*"],
       effect: Effect.ALLOW,
-      // conditions: {"StringEquals": tagCondition},
       resources: ["*"]
     }));
 
