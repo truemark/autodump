@@ -17,6 +17,7 @@ import {
 } from "aws-cdk-lib/aws-stepfunctions";
 import {LogGroup} from 'aws-cdk-lib/aws-logs';
 import {ScannerFunction} from "./scanner-function";
+import {HashFunction} from "./hash-function";
 import {SubnetType, Vpc} from "aws-cdk-lib/aws-ec2";
 import {
   EcsFargateContainerDefinition,
@@ -70,6 +71,7 @@ export class AutoDump extends Construct {
     }
 
     const scannerFunction = new ScannerFunction(this, "ScannerFunction", {tagName: "autodump:start-schedule"});
+    const hashFunction = new HashFunction(this, "HashFunction", {secretArn: "", initialHash: ""});
 
     const computeEnvironment: FargateComputeEnvironment =
       new FargateComputeEnvironment(this, "FargateComputeEnvironment", fargateComputeEnvironmentProps);

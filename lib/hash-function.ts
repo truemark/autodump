@@ -8,6 +8,7 @@ import {PolicyStatement} from "aws-cdk-lib/aws-iam"
 
 interface HashFunctionProps {
     readonly secretArn: string;
+    readonly initialHash: string;
 }
 
 export class HashFunction extends NodejsFunction {

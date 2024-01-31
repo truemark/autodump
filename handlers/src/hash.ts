@@ -1,5 +1,4 @@
-// import {SecretsManagerClient, ListSecretsCommand, Tag as Tags} from "@aws-sdk/client-secrets-manager";
-// import {Secret, fromSecretCompleteArn } from "@aws-cdk-lib/aws-secretsmanager";
+import {SecretsManagerClient, DescribeSecretCommand} from "@aws-sdk/client-secrets-manager";
 import {AutoDumpTags} from "./hash-helper";
 
 interface AutoDumpAction {
@@ -22,40 +21,18 @@ interface AutoDumpResource {
 
 // const currentRegion = process.env.AWS_REGION;
 export async function handler(event: any): Promise<any> {
-  const secretArn = event.Execution.secretArn;
-  const hash = event.Execution.hash;
+  const secretArn = event.secretArn;
+  const hash = event.hash;
 
-  // // const tagsHash : string;
-  // // const secretArn = event.SecretArn;
-  // console.log(`\n\nfetch hash handler:  secret arn is ${secretArn}\n`);
-  //
-  //
-  // console.log(`\n\nhandler: secret arn is ${secretArn}\n`);
-  // try {
-  //   if (secretArn === undefined) {
-  //     console.log(`secretArn is undefined, exiting.`);
-  //     return {
-  //       statusCode: 400,
-  //       body: JSON.stringify({
-  //         message: `Error fetching current hash for secret. ${error}`,
-  //       }),
-  //     }
-  //   } else {
-  //
-  //     console.log(`\n\nhandler: secret arn is ${secretArn}\n`);
-  //     const tagsHash = await autoDump.getTagsHash(secretArn);
-  //     console.log(`\n\nhandler: hash is ${tagsHash}\n`);
-  //   }
-  // } catch (error) {
-  //   console.error(`late error fetching current hash for secret: ${error}`);
-  //   return {
-  //     statusCode: 400,
-  //     body: JSON.stringify({
-  //       message: `Error fetching secret hash. ${error}`,
-  //     }),
-  //   }
-  // }
+  const currentRegion = process.env.AWS_REGION;
 
+  const client = new SecretsManagerClient({region: currentRegion});
+  const input = { // DescribeSecretRequest
+    SecretId: secretArn
+  };
+  const command = new DescribeSecretCommand(input);
+  const response = await client.send(command);
+  console.log(`response is ${JSON.stringify(response)}`)
 
   // Do logic
   // get secret
