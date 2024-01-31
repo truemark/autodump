@@ -193,14 +193,22 @@ export class AutoDump extends Construct {
       }
     };
 
+    const getHash = new LambdaInvoke(this, "Get Hash", {
+      lambdaFunction: hashFunction,
+      outputPath: "$.HashesMatch"
+    });
+
+
     const definition = DefinitionBody.fromChainable(addExecutionContext
       .next(wait)
-      // .next(fetchHash)
-      .next(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))
-      .next(new Choice (this, 'Evaluate job completion status')
-        .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
-        .otherwise(jobFailed)
-    ));
+      .next(getHash)
+      .next(new Choice(this, 'Hashes match?')
+        .when(Condition.booleanEquals('$.HashesMatch', false), jobFailed)
+        .otherwise(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))))
+    //   .next(new Choice (this, 'Evaluate job completion status')
+    //     .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
+    //     .otherwise(jobFailed)
+    // ));
 
     const stateMachine = new StateMachine(this, "Default", {
       definitionBody: definition,

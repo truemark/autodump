@@ -93,97 +93,92 @@ function nextAction(resource: AutoDumpResource, priorAction?: AutoDumpAction): A
   return selected;
 }
 
-
-export async function listSecrets(stateMachineArn: string): Promise<any> {
-
-  // const stateMachineArn = event.StateMachineArn;
-  console.log(`handler: state machine arn is ${stateMachineArn}`);
-
-  const listSecretsRequest = {
-    MaxResults: 100,
-  };
-
-  const command = await new ListSecretsCommand(listSecretsRequest);
-  const listSecretsResponse = await client.send(command);
-
-  try {
-    if (listSecretsResponse.SecretList) {
-      const resources: AutoDumpResource[] = [];
-      const action: AutoDumpAction[] = [];
-
-      for (const secret of listSecretsResponse.SecretList) {
-        console.log(`Accessing tags for secret: ${secret.Name}`);
-
-        if (typeof secret.Tags !== 'undefined' && secret.Tags.length > 0) {
-          for (const tag of secret.Tags) {
-            if (tag.Key === AutoDumpTag.START_SCHEDULE && tag.Value !== null && secret.ARN !== undefined ) {
-
-              // This secret should be scheduled.
-              console.log(`Secret eligible for scheduling: ${secret.Name} tag present: ${tag.Key}, schedule is ${tag.Value}`);
-              const tags = getTags(secret.Tags);
-
-              resources.push({
-                id: secret.ARN.toString(),
-                tags,
-                tagsHash: hashTagsV1(tags),
-              })
-              const nextTime = nextAction(resources[0]);
-
-              if (secret.ARN && nextTime !== undefined) {
-                action.push({
-                  resourceId: secret.ARN.toString(),
-                  tagsHash: hashTagsV1(tags),
-                  when: nextTime.when,
-                });
-
-                const epoch = Date.now();
-                const jobName = secret.Name + "-" + epoch
-
-                console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
-
-                const startStateMachineResponse = await sfnClient.send(new StartExecutionCommand({
-                  stateMachineArn: stateMachineArn,
-                  input: JSON.stringify(action[0]),
-                  name: jobName.slice(0,80)
-                }));
-              }
-            }
-          }
-        } else {
-          console.log(`No tags available for this secret --->>> ${secret.Name}.`);
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error listing secrets:", error);
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: `Error listing secrets. ${error}`,
-      }),
-    }
-  }
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      message: "Successful execution",
-    }),
-  };
-}
-
-// export async function fetchHash(secretArn: string): Promise<any> {
+// export async function listSecrets(stateMachineArn: string): Promise<any> {
+//
+//   // const stateMachineArn = event.StateMachineArn;
 //
 // }
 
+
 export async function handler(event: any): Promise<any> {
   const stateMachineArn = event.StateMachineArn;
-  // const secretArn = event.SecretArn;
-  // console.log(`\n\nhandler: state machine arn is ${stateMachineArn}, secret arn is ${secretArn}\n`);
+
 
   if (stateMachineArn !== undefined ) {
     console.log(`\n\nhandler: state machine arn is ${stateMachineArn}\n`);
-    listSecrets(stateMachineArn);
+    console.log(`handler: state machine arn is ${stateMachineArn}`);
 
+    const listSecretsRequest = {
+      MaxResults: 100,
+    };
+
+    const command = new ListSecretsCommand(listSecretsRequest);
+    const listSecretsResponse = await client.send(command);
+
+    console.log(`listSecretsResponse.SecretList is ${listSecretsResponse.SecretList}`);
+    try {
+      if (listSecretsResponse.SecretList) {
+        const resources: AutoDumpResource[] = [];
+        const action: AutoDumpAction[] = [];
+
+        for (const secret of listSecretsResponse.SecretList) {
+          console.log(`Accessing tags for secret: ${secret.Name}`);
+
+          if (typeof secret.Tags !== 'undefined' && secret.Tags.length > 0) {
+            for (const tag of secret.Tags) {
+              if (tag.Key === AutoDumpTag.START_SCHEDULE && tag.Value !== null && secret.ARN !== undefined ) {
+
+                // This secret should be scheduled.
+                console.log(`Secret eligible for scheduling: ${secret.Name} tag present: ${tag.Key}, schedule is ${tag.Value}`);
+                const tags = getTags(secret.Tags);
+
+                resources.push({
+                  id: secret.ARN.toString(),
+                  tags,
+                  tagsHash: hashTagsV1(tags),
+                })
+                const nextTime = nextAction(resources[0]);
+
+                if (secret.ARN && nextTime !== undefined) {
+                  action.push({
+                    resourceId: secret.ARN.toString(),
+                    tagsHash: hashTagsV1(tags),
+                    when: nextTime.when,
+                  });
+
+                  const epoch = Date.now();
+                  const jobName = secret.Name + "-" + epoch
+
+                  console.log(`starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`);
+
+                  const startStateMachineResponse = await sfnClient.send(new StartExecutionCommand({
+                    stateMachineArn: stateMachineArn,
+                    input: JSON.stringify(action[0]),
+                    name: jobName.slice(0,80)
+                  }));
+                }
+              }
+            }
+          } else {
+            console.log(`No tags available for this secret --->>> ${secret.Name}.`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error listing secrets:", error);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          message: `Error listing secrets. ${error}`,
+        }),
+      }
+    }
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Successful execution",
+      }),
+    };
   } else {
     console.log(`\n\nhandler: no state machine arn provided\n`);
     throw new Error("No state machine arn provided")

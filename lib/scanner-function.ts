@@ -28,23 +28,16 @@ export class ScannerFunction extends NodejsFunction {
 
       this.addToRolePolicy(new PolicyStatement({
         actions: ['states:StartExecution'],
-        resources: ['*'],
-        conditions: {
-          StringEquals: {
-            'aws:PrincipalType': 'Service',
-          },
-        },
+        resources: ['*']
       }));
 
       this.addToRolePolicy(new PolicyStatement({
-        actions: ['secretsmanager:GetSecretValue', "secretsmanager:DescribeSecret",
-          "secretsmanager:ListSecrets"],
-        resources: ['*'],
-        conditions: {
-          StringEquals: {
-            'aws:PrincipalType': 'Service',
-          },
-        },
-      }));
+        actions: [
+          'secretsmanager:GetSecretValue',
+          'secretsmanager:DescribeSecret',
+          'secretsmanager:ListSecrets'
+        ],
+        resources: ['*']
+        }));
     }
 }
