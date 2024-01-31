@@ -93,19 +93,10 @@ function nextAction(resource: AutoDumpResource, priorAction?: AutoDumpAction): A
   return selected;
 }
 
-// export async function listSecrets(stateMachineArn: string): Promise<any> {
-//
-//   // const stateMachineArn = event.StateMachineArn;
-//
-// }
-
-
 export async function handler(event: any): Promise<any> {
   const stateMachineArn = event.StateMachineArn;
 
-
   if (stateMachineArn !== undefined ) {
-    console.log(`\n\nhandler: state machine arn is ${stateMachineArn}\n`);
     console.log(`handler: state machine arn is ${stateMachineArn}`);
 
     const listSecretsRequest = {

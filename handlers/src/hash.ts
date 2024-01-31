@@ -1,5 +1,5 @@
 import {SecretsManagerClient, DescribeSecretCommand} from "@aws-sdk/client-secrets-manager";
-import {AutoDumpTags, hashTagsV1} from "./hash-helper";
+import {AutoDumpTag, AutoDumpTags, getTags, hashTagsV1} from "./hash-helper"
 
 interface AutoDumpAction {
   readonly resourceId: string;
@@ -20,9 +20,12 @@ interface AutoDumpResource {
 }
 
 const currentRegion = process.env.AWS_REGION;
+
 export async function handler(event: any): Promise<any> {
-  const secretArn = event.secretArn;
-  const hash = event.hash;
+  console.log(`event is ${JSON.stringify(event)}`)
+  const secretArn = event.Secret;
+  const hash = event.TagsHash;
+  console.log(`starting function: secretArn is ${secretArn}, hash is ${hash}`)
 
   const client = new SecretsManagerClient({region: currentRegion});
   const input = {
@@ -31,15 +34,18 @@ export async function handler(event: any): Promise<any> {
   const command = new DescribeSecretCommand(input);
   const response = await client.send(command);
   console.log(`response is ${JSON.stringify(response.Tags)}`)
-  const currentHash = hashTagsV1(response.Tags);
+  const tags = getTags(response.Tags);
+  const currentHash = hashTagsV1(tags);
   console.log(`current hash is ${currentHash}`)
 
   if (currentHash === hash) {
+    // return true;
+    // {
     return {
       hash,
       secretArn,
       execute: true,
-      reason: `Initial and current hashes match: ${hash} . Continue execution.`,
+      reason: `Initial and current hashes match: ${hash} . Continue execution.`
     }
   } else {
     return {

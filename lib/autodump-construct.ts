@@ -195,7 +195,8 @@ export class AutoDump extends Construct {
 
     const getHash = new LambdaInvoke(this, "Get Hash", {
       lambdaFunction: hashFunction,
-      outputPath: "$.HashesMatch"
+      inputPath: "$",
+      outputPath: "$.Payload"
     });
 
 
@@ -203,7 +204,7 @@ export class AutoDump extends Construct {
       .next(wait)
       .next(getHash)
       .next(new Choice(this, 'Hashes match?')
-        .when(Condition.booleanEquals('$.HashesMatch', false), jobFailed)
+        .when(Condition.booleanEquals('$.execute', false), jobFailed)
         .otherwise(new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps))))
     //   .next(new Choice (this, 'Evaluate job completion status')
     //     .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
