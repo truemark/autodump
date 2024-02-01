@@ -171,7 +171,10 @@ export class AutoDump extends Construct {
           "s3:PutObject"
         ],
         effect: Effect.ALLOW,
-        resources: [autoDumpBucket.bucketArn]
+        resources: [
+          autoDumpBucket.bucketArn,
+          autoDumpBucket.bucketArn + "/*"
+        ]
       }
     ));
 
@@ -197,7 +200,6 @@ export class AutoDump extends Construct {
         // jobRole: batchServiceRole
         jobRole: jobRole
       }),
-
     });
 
     const batchSubmitJobProps: BatchSubmitJobProps = {
