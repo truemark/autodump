@@ -1,6 +1,6 @@
 import {Construct} from "constructs"
 import {CompositePrincipal, Effect, ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
-import {AwsLogDriver, ContainerImage} from 'aws-cdk-lib/aws-ecs';
+import {AwsLogDriver, ContainerImage, CpuArchitecture} from 'aws-cdk-lib/aws-ecs';
 import {Duration} from 'aws-cdk-lib/core';
 import {
   Choice,
@@ -98,6 +98,13 @@ export class AutoDump extends Construct {
       resources: ["*"]
     }));
 
+    batchServiceRole.addToPolicy(new PolicyStatement({
+      actions: ["secretsmanager:GetSecretValue"],
+      effect: Effect.ALLOW,
+      resources: ["*"]
+    }));
+
+
     const autoDumpBucket = new Bucket(this, 'Archive', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: BucketEncryption.S3_MANAGED,
@@ -137,7 +144,7 @@ export class AutoDump extends Construct {
 
     const jobSuccess = new Succeed(this, 'Success');
 
-    const jobFailed = new Fail(this, 'jobFailed', {
+    const jobFailed = new Fail(this, 'Failure', {
       cause: 'AutoDump failed with unspecified error.',
       error: 'AutoDump failed with unspecified error.'
     });
@@ -168,6 +175,15 @@ export class AutoDump extends Construct {
       }
     ));
 
+    jobRole.addToPolicy(new PolicyStatement({
+        actions: [
+          "kms:Decrypt"
+        ],
+        effect: Effect.ALLOW,
+        resources: ["*"]
+      }
+    ));
+
     // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
     // this is the only way it works
     const job = new EcsJobDefinition(this, 'JobDefinition', {
@@ -178,8 +194,10 @@ export class AutoDump extends Construct {
         executionRole: batchServiceRole,
         logging: logDriver,
         command: ["/usr/local/bin/dumpdb.sh"],
+        // jobRole: batchServiceRole
         jobRole: jobRole
       }),
+
     });
 
     const batchSubmitJobProps: BatchSubmitJobProps = {
@@ -195,6 +213,7 @@ export class AutoDump extends Construct {
     };
 
     const getHash = new LambdaInvoke(this, "GetHash", {
+      stateName: "Get current secret tag hash",
       lambdaFunction: hashFunction,
       inputPath: "$",
       resultPath: "$.LambdaOutput"
@@ -219,7 +238,7 @@ export class AutoDump extends Construct {
         destination: logGroup,
         level: LogLevel.ALL,
       },
-      role: jobRole,
+      role: batchServiceRole,
       timeout: Duration.hours(6),
       comment: 'Database dump state machine.',
     });
