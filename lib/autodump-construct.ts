@@ -104,12 +104,17 @@ export class AutoDump extends Construct {
       resources: ["*"]
     }));
 
-
     const autoDumpBucket = new Bucket(this, 'Archive', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       versioned: false,
+      lifecycleRules: [
+        {
+          expiration: Duration.days(7),
+          enabled: true,
+        }
+      ]
     });
 
     const addExecutionContext = new Pass(this, "Add Execution Context", {
@@ -125,7 +130,7 @@ export class AutoDump extends Construct {
 
     const logGroup = new LogGroup(this, "LogGroup", {});
     const logDriver = new AwsLogDriver({
-      streamPrefix: `${stackName}-`,
+      streamPrefix: `${stackName}`,
       logGroup: logGroup,
     });
 
@@ -196,6 +201,7 @@ export class AutoDump extends Construct {
         cpu: 1,
         executionRole: batchServiceRole,
         logging: logDriver,
+
         command: ["/usr/local/bin/dumpdb.sh"],
         // jobRole: batchServiceRole
         jobRole: jobRole
@@ -208,7 +214,6 @@ export class AutoDump extends Construct {
       jobQueueArn: jobQueue.jobQueueArn,
       containerOverrides: {
         environment: {
-          // "SECRET_ARN": JsonPath.stringAt('$.Secret'),
           "SECRET_ARN": JsonPath.stringAt('$.Secret'),
         },
       }
@@ -225,11 +230,11 @@ export class AutoDump extends Construct {
     const definition = DefinitionBody.fromChainable(addExecutionContext
       .next(wait)
       .next(getHash)
-      .next(new Choice(this, 'Hashes match?')
+      .next(new Choice(this, 'Do the hashes match?')
         .when(Condition.booleanEquals('$.LambdaOutput.Payload.execute', false), jobFailed)
         .when(Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
-          new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps).next(new Choice(this, 'Job succeeded')
-            .when(Condition.stringEquals('$.status', 'SUCCEEDED'), jobSuccess)
+          new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps).next(new Choice(this, 'Did job complete successfully?')
+            .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
             .otherwise(jobFailed)
           ))));
 
@@ -252,10 +257,6 @@ export class AutoDump extends Construct {
       resources: ["*"]
     }));
 
-    autoDumpBucket.addLifecycleRule({
-      expiration: Duration.days(7), // specify the number of days after which objects should be deleted
-      enabled: true,
-    });
 
     batchServiceRole.addToPolicy(new PolicyStatement({
       actions: ["s3:PutObject"],
