@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+src/**/*.js
+src/**/*.d.ts
+coverage
