@@ -5,5 +5,5 @@
     "target": "ES2022",
     "lib": ["es2022"]
   },
-  "exclude": ["node_modules", "cdk.out"]
+  "exclude": ["node_modules", "cdk.out", "handlers"]
 }
