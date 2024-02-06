@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "postbuild": "prettier --check . && gts lint",
+    "postbuild": "prettier --check . && gts lint && cd handlers && pnpm build",
     "watch": "tsc -w",
     "test": "jest --coverage --collectCoverageFrom='src/**/*.{ts,tsx}'",
     "lint": "gts lint",
