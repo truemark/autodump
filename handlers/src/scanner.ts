@@ -115,8 +115,6 @@ export async function handler(event: eventParameters): Promise<boolean> {
       `listSecretsResponse.SecretList is ${listSecretsResponse.SecretList}`
     );
 
-    let startStateMachineResponse = undefined;
-
     try {
       if (listSecretsResponse.SecretList) {
         const resources: AutoDumpResource[] = [];
@@ -159,7 +157,7 @@ export async function handler(event: eventParameters): Promise<boolean> {
                     `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`
                   );
 
-                  startStateMachineResponse = await sfnClient.send(
+                  const startStateMachineResponse = await sfnClient.send(
                     new StartExecutionCommand({
                       stateMachineArn: stateMachineArn,
                       input: JSON.stringify(action[0]),
