@@ -3,22 +3,22 @@ import {
   DescribeSecretCommand,
 } from '@aws-sdk/client-secrets-manager';
 import {getTags, hashTagsV1} from './hash-helper';
-//
-// interface AutoDumpAction {
-//   readonly resourceId: string;
-//   readonly tagsHash: string;
-//   readonly when: string;
-// }
-
-// interface AutoDumpResource {
-//   readonly id: string;
-//   readonly tags: AutoDumpTags;
-//   readonly tagsHash: string;
-// }
 
 const currentRegion = process.env.AWS_REGION;
 
-export async function handler(event: any): Promise<any> {
+interface eventParameters {
+  readonly SecretArn: string;
+  readonly TagsHash: string;
+}
+
+interface returnValue {
+  readonly hash: string;
+  readonly secretArn: string;
+  readonly execute: boolean;
+  readonly reason: string;
+}
+
+export async function handler(event: eventParameters): Promise<returnValue> {
   console.log(`event is ${JSON.stringify(event)}`);
   const secretArn = event.Secret;
   const hash = event.TagsHash;

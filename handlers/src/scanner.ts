@@ -98,7 +98,7 @@ interface eventParameters {
   readonly StateMachineArn: string;
 }
 
-export async function handler(event: eventParameters): Promise<string> {
+export async function handler(event: eventParameters): Promise<boolean> {
   const stateMachineArn = event.StateMachineArn;
 
   if (stateMachineArn !== undefined) {
@@ -114,8 +114,6 @@ export async function handler(event: eventParameters): Promise<string> {
     console.log(
       `listSecretsResponse.SecretList is ${listSecretsResponse.SecretList}`
     );
-
-    let startStateMachineResponse: string;
 
     try {
       if (listSecretsResponse.SecretList) {
@@ -176,18 +174,16 @@ export async function handler(event: eventParameters): Promise<string> {
           }
         }
       }
+      return true;
     } catch (error) {
       console.error('Error listing secrets:', error);
       return {
-        statusCode: 400,
-        body: JSON.stringify({
-          message: `Error listing secrets. ${error}`,
-        }),
+        message: `Error listing secrets. ${error}`,
       };
     }
-    return startStateMachineResponse;
   } else {
     console.log('handler: no state machine arn provided');
     throw new Error('No state machine arn provided');
+    return false;
   }
 }

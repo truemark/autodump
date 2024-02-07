@@ -21,9 +21,10 @@ export class HashFunction extends NodejsFunction {
       logRetention: RetentionDays.ONE_MONTH,
       entry: path.join(__dirname, '..', 'handlers', 'src', 'hash.ts'),
       handler: 'handler',
-      // environment: {
-      //     TAG_NAME: props.tagName
-      // },
+      environment: {
+        SECRET_ARN: props.secretArn,
+        INITIAL_HASH: props.initialHash,
+      },
     });
 
     this.addToRolePolicy(
