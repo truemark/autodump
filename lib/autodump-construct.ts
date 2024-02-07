@@ -1,6 +1,13 @@
-import {Construct} from "constructs"
-import {CompositePrincipal, Effect, ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
-import {AwsLogDriver, ContainerImage, CpuArchitecture} from 'aws-cdk-lib/aws-ecs';
+import {Construct} from 'constructs';
+import {
+  CompositePrincipal,
+  Effect,
+  ManagedPolicy,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from 'aws-cdk-lib/aws-iam';
+import {AwsLogDriver, ContainerImage} from 'aws-cdk-lib/aws-ecs';
 import {Duration} from 'aws-cdk-lib/core';
 import {
   Choice,
@@ -13,22 +20,26 @@ import {
   StateMachine,
   Succeed,
   Wait,
-  WaitTime
-} from "aws-cdk-lib/aws-stepfunctions";
+  WaitTime,
+} from 'aws-cdk-lib/aws-stepfunctions';
 import {LogGroup} from 'aws-cdk-lib/aws-logs';
-import {ScannerFunction} from "./scanner-function";
-import {HashFunction} from "./hash-function";
-import {SubnetType, Vpc} from "aws-cdk-lib/aws-ec2";
+import {ScannerFunction} from './scanner-function';
+import {HashFunction} from './hash-function';
+import {SubnetType, Vpc} from 'aws-cdk-lib/aws-ec2';
 import {
   EcsFargateContainerDefinition,
   EcsJobDefinition,
   FargateComputeEnvironment,
   FargateComputeEnvironmentProps,
-  JobQueue
+  JobQueue,
 } from 'aws-cdk-lib/aws-batch';
-import {Size, Stack, Tags} from "aws-cdk-lib";
-import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
-import {BatchSubmitJob, BatchSubmitJobProps, LambdaInvoke} from "aws-cdk-lib/aws-stepfunctions-tasks";
+import {Size} from 'aws-cdk-lib';
+import {BlockPublicAccess, Bucket, BucketEncryption} from 'aws-cdk-lib/aws-s3';
+import {
+  BatchSubmitJob,
+  BatchSubmitJobProps,
+  LambdaInvoke,
+} from 'aws-cdk-lib/aws-stepfunctions-tasks';
 
 export interface AutoDumpProps {
   readonly tagPrefix?: string;
@@ -41,8 +52,7 @@ export class AutoDump extends Construct {
   constructor(scope: Construct, id: string, props: AutoDumpProps) {
     super(scope, id);
 
-    const stackName = "autodump"
-    const currentAccount = Stack.of(this).account;
+    const stackName = 'autodump';
 
     const vpc = Vpc.fromVpcAttributes(this, 'Vpc', {
       vpcId: props.vpcId,
@@ -64,45 +74,65 @@ export class AutoDump extends Construct {
     });
 
     const fargateComputeEnvironmentProps: FargateComputeEnvironmentProps = {
-      "vpc": vpc,
-      "vpcSubnets": privateSubnets,
-      "spot": false,
-      "maxvCpus": 4,
-    }
+      vpc: vpc,
+      vpcSubnets: privateSubnets,
+      spot: false,
+      maxvCpus: 4,
+    };
 
-    const scannerFunction = new ScannerFunction(this, "ScannerFunction", {tagName: "autodump:start-schedule"});
-    const hashFunction = new HashFunction(this, "HashFunction", {secretArn: "", initialHash: ""});
+    const scannerFunction = new ScannerFunction(this, 'ScannerFunction', {
+      tagName: 'autodump:start-schedule',
+    });
+    const hashFunction = new HashFunction(this, 'HashFunction', {
+      secretArn: '',
+      initialHash: '',
+    });
 
     const computeEnvironment: FargateComputeEnvironment =
-      new FargateComputeEnvironment(this, "FargateComputeEnvironment", fargateComputeEnvironmentProps);
+      new FargateComputeEnvironment(
+        this,
+        'FargateComputeEnvironment',
+        fargateComputeEnvironmentProps
+      );
 
     // Create the stack service role, allow batch, step functions and ecs as principals, attach required managed policies.
-    const batchServiceRole = new Role(this, "ServiceRole", {
+    const batchServiceRole = new Role(this, 'ServiceRole', {
       assumedBy: new CompositePrincipal(
-        new ServicePrincipal("batch.amazonaws.com"),
-        new ServicePrincipal("ecs.amazonaws.com"),
-        new ServicePrincipal("ecs-tasks.amazonaws.com"),
-        new ServicePrincipal("states.amazonaws.com")),
-      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSBatchServiceRole"),
-        ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")],
+        new ServicePrincipal('batch.amazonaws.com'),
+        new ServicePrincipal('ecs.amazonaws.com'),
+        new ServicePrincipal('ecs-tasks.amazonaws.com'),
+        new ServicePrincipal('states.amazonaws.com')
+      ),
+      managedPolicies: [
+        ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AWSBatchServiceRole'
+        ),
+        ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AmazonECSTaskExecutionRolePolicy'
+        ),
+      ],
     });
 
     const tagCondition = {
       'aws:RequestTag/autodump:start-schedule': 'true',
     };
 
-    batchServiceRole.addToPolicy(new PolicyStatement({
-      actions: ["batch:*"],
-      effect: Effect.ALLOW,
-      conditions: {"StringEquals": tagCondition},
-      resources: ["*"]
-    }));
+    batchServiceRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['batch:*'],
+        effect: Effect.ALLOW,
+        conditions: {StringEquals: tagCondition},
+        resources: ['*'],
+      })
+    );
 
-    batchServiceRole.addToPolicy(new PolicyStatement({
-      actions: ["secretsmanager:GetSecretValue"],
-      effect: Effect.ALLOW,
-      resources: ["*"]
-    }));
+    batchServiceRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue'],
+        effect: Effect.ALLOW,
+        resources: ['*'],
+      })
+    );
 
     const autoDumpBucket = new Bucket(this, 'Archive', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
@@ -113,36 +143,37 @@ export class AutoDump extends Construct {
         {
           expiration: Duration.days(7),
           enabled: true,
-        }
-      ]
+        },
+      ],
     });
 
-    const addExecutionContext = new Pass(this, "Add Execution Context", {
+    const addExecutionContext = new Pass(this, 'Add Execution Context', {
       parameters: {
-        "Execution.$": "$$.Execution",
-        "State.$": "$$.State",
-        "StateMachine.$": "$$.StateMachine",
-        "Secret": JsonPath.stringAt('$.resourceId'),
-        "TagsHash": JsonPath.stringAt('$.tagsHash'),
-        "When": JsonPath.stringAt('$.when'),
-      }
+        'Execution.$': '$$.Execution',
+        'State.$': '$$.State',
+        'StateMachine.$': '$$.StateMachine',
+        Secret: JsonPath.stringAt('$.resourceId'),
+        TagsHash: JsonPath.stringAt('$.tagsHash'),
+        When: JsonPath.stringAt('$.when'),
+      },
     });
 
-    const logGroup = new LogGroup(this, "LogGroup", {});
+    const logGroup = new LogGroup(this, 'LogGroup', {});
     const logDriver = new AwsLogDriver({
       streamPrefix: `${stackName}`,
       logGroup: logGroup,
     });
 
-    const wait = new Wait(this, "Wait for execution time", {
-      "time": WaitTime.timestampPath("$.When")
+    const wait = new Wait(this, 'Wait for execution time', {
+      time: WaitTime.timestampPath('$.When'),
     });
 
-    const jobQueue = new JobQueue(this, "JobQueue", {
-      computeEnvironments: [{
-        computeEnvironment,
-        order: 1,
-      },
+    const jobQueue = new JobQueue(this, 'JobQueue', {
+      computeEnvironments: [
+        {
+          computeEnvironment,
+          order: 1,
+        },
       ],
       enabled: true,
     });
@@ -151,61 +182,66 @@ export class AutoDump extends Construct {
 
     const jobFailed = new Fail(this, 'Failure', {
       cause: 'AutoDump failed with unspecified error.',
-      error: 'AutoDump failed with unspecified error.'
+      error: 'AutoDump failed with unspecified error.',
     });
 
-    const jobRole = new Role(this, "JobRole", {
+    const jobRole = new Role(this, 'JobRole', {
       assumedBy: new CompositePrincipal(
-        new ServicePrincipal("batch.amazonaws.com"),
-        new ServicePrincipal("ecs-tasks.amazonaws.com"),
-        new ServicePrincipal("states.amazonaws.com")),
-      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")],
+        new ServicePrincipal('batch.amazonaws.com'),
+        new ServicePrincipal('ecs-tasks.amazonaws.com'),
+        new ServicePrincipal('states.amazonaws.com')
+      ),
+      managedPolicies: [
+        ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AmazonECSTaskExecutionRolePolicy'
+        ),
+      ],
     });
 
-    jobRole.addToPolicy(new PolicyStatement({
-          actions: [
-            "secretsmanager:GetSecretValue"
-          ],
-          effect: Effect.ALLOW,
-          resources: ["*"]
-        }
-    ));
-
-    jobRole.addToPolicy(new PolicyStatement({
-        actions: [
-          "s3:PutObject"
-        ],
+    jobRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue'],
         effect: Effect.ALLOW,
-        resources: [
-          autoDumpBucket.bucketArn,
-          autoDumpBucket.bucketArn + "/*"
-        ]
-      }
-    ));
+        resources: ['*'],
+      })
+    );
 
-    jobRole.addToPolicy(new PolicyStatement({
-        actions: [
-          "kms:Decrypt"
-        ],
+    jobRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['s3:PutObject'],
         effect: Effect.ALLOW,
-        resources: ["*"]
-      }
-    ));
+        resources: [autoDumpBucket.bucketArn, autoDumpBucket.bucketArn + '/*'],
+      })
+    );
+
+    jobRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['kms:Decrypt'],
+        effect: Effect.ALLOW,
+        resources: ['*'],
+      })
+    );
 
     // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
     // this is the only way it works
     const job = new EcsJobDefinition(this, 'JobDefinition', {
-      container: new EcsFargateContainerDefinition(this, 'FargateAutoDumpDefinition', {
-        image: ContainerImage.fromRegistry('public.ecr.aws/truemark/autodump:latest'),
-        memory: Size.gibibytes(2),
-        cpu: 1,
-        executionRole: batchServiceRole,
-        logging: logDriver,
+      container: new EcsFargateContainerDefinition(
+        this,
+        'FargateAutoDumpDefinition',
+        {
+          image: ContainerImage.fromRegistry(
+            'public.ecr.aws/truemark/autodump:latest'
+          ),
+          memory: Size.gibibytes(2),
+          cpu: 1,
+          executionRole: batchServiceRole,
+          logging: logDriver,
 
-        command: ["/usr/local/bin/dumpdb.sh"],
-        // jobRole: batchServiceRole
-        jobRole: jobRole
-      }),
+          command: ['/usr/local/bin/dumpdb.sh'],
+          // jobRole: batchServiceRole
+          jobRole: jobRole,
+        }
+      ),
     });
 
     const batchSubmitJobProps: BatchSubmitJobProps = {
@@ -214,32 +250,47 @@ export class AutoDump extends Construct {
       jobQueueArn: jobQueue.jobQueueArn,
       containerOverrides: {
         environment: {
-          "SECRET_ARN": JsonPath.stringAt('$.Secret'),
+          SECRET_ARN: JsonPath.stringAt('$.Secret'),
         },
-      }
+      },
     };
 
-    const getHash = new LambdaInvoke(this, "GetHash", {
-      stateName: "Get current secret tag hash",
+    const getHash = new LambdaInvoke(this, 'GetHash', {
+      stateName: 'Get current secret tag hash',
       lambdaFunction: hashFunction,
-      inputPath: "$",
-      resultPath: "$.LambdaOutput"
+      inputPath: '$',
+      resultPath: '$.LambdaOutput',
     });
 
+    const definition = DefinitionBody.fromChainable(
+      addExecutionContext
+        .next(wait)
+        .next(getHash)
+        .next(
+          new Choice(this, 'Do the hashes match?')
+            .when(
+              Condition.booleanEquals('$.LambdaOutput.Payload.execute', false),
+              jobFailed
+            )
+            .when(
+              Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
+              new BatchSubmitJob(
+                this,
+                'Fire batch job',
+                batchSubmitJobProps
+              ).next(
+                new Choice(this, 'Did job complete successfully?')
+                  .when(
+                    Condition.stringEquals('$.Status', 'SUCCEEDED'),
+                    jobSuccess
+                  )
+                  .otherwise(jobFailed)
+              )
+            )
+        )
+    );
 
-    const definition = DefinitionBody.fromChainable(addExecutionContext
-      .next(wait)
-      .next(getHash)
-      .next(new Choice(this, 'Do the hashes match?')
-        .when(Condition.booleanEquals('$.LambdaOutput.Payload.execute', false), jobFailed)
-        .when(Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
-          new BatchSubmitJob(this, 'Fire batch job', batchSubmitJobProps).next(new Choice(this, 'Did job complete successfully?')
-            .when(Condition.stringEquals('$.Status', 'SUCCEEDED'), jobSuccess)
-            .otherwise(jobFailed)
-          ))));
-
-
-    const stateMachine = new StateMachine(this, "Default", {
+    const stateMachine = new StateMachine(this, 'Default', {
       definitionBody: definition,
       logs: {
         destination: logGroup,
@@ -251,17 +302,20 @@ export class AutoDump extends Construct {
     });
 
     stateMachine.grantStartExecution(scannerFunction);
-    stateMachine.addToRolePolicy(new PolicyStatement({
-      actions: ["batch:*"],
-      effect: Effect.ALLOW,
-      resources: ["*"]
-    }));
+    stateMachine.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['batch:*'],
+        effect: Effect.ALLOW,
+        resources: ['*'],
+      })
+    );
 
-
-    batchServiceRole.addToPolicy(new PolicyStatement({
-      actions: ["s3:PutObject"],
-      effect: Effect.ALLOW,
-      resources: [autoDumpBucket.bucketArn]
-    }));
-}}
-
+    batchServiceRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['s3:PutObject'],
+        effect: Effect.ALLOW,
+        resources: [autoDumpBucket.bucketArn],
+      })
+    );
+  }
+}

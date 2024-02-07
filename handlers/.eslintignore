@@ -1,5 +1,5 @@
 node_modules
-src/**/*.js
-src/**/*.d.ts
-src/**/*.map
+src/*.js
+src/*.d.ts
+src/*.map
 coverage
