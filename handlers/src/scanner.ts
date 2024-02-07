@@ -115,6 +115,8 @@ export async function handler(event: eventParameters): Promise<boolean> {
       `listSecretsResponse.SecretList is ${listSecretsResponse.SecretList}`
     );
 
+    let startStateMachineResponse = undefined;
+
     try {
       if (listSecretsResponse.SecretList) {
         const resources: AutoDumpResource[] = [];
@@ -163,6 +165,9 @@ export async function handler(event: eventParameters): Promise<boolean> {
                       input: JSON.stringify(action[0]),
                       name: jobName.slice(0, 80),
                     })
+                  );
+                  console.log(
+                    `start state machine response is ${startStateMachineResponse}`
                   );
                 }
               }
