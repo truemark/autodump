@@ -7,11 +7,6 @@ import {CronExpression} from 'cron-parser/types';
 import {SFNClient, StartExecutionCommand} from '@aws-sdk/client-sfn';
 import {AutoDumpTag, AutoDumpTags, getTags, hashTagsV1} from './hash-helper';
 
-// interface AutoDumpTags {
-//   readonly timezone?: string;
-//   readonly startSchedule?: string;
-// }
-
 interface AutoDumpAction {
   readonly resourceId: string;
   readonly tagsHash: string;
@@ -99,7 +94,11 @@ function nextAction(
   return selected;
 }
 
-export async function handler(event: any): Promise<string> {
+interface eventParameters {
+  readonly StateMachineArn: string;
+}
+
+export async function handler(event: eventParameters): Promise<string> {
   const stateMachineArn = event.StateMachineArn;
 
   if (stateMachineArn !== undefined) {
@@ -115,6 +114,9 @@ export async function handler(event: any): Promise<string> {
     console.log(
       `listSecretsResponse.SecretList is ${listSecretsResponse.SecretList}`
     );
+
+    let startStateMachineResponse: string;
+
     try {
       if (listSecretsResponse.SecretList) {
         const resources: AutoDumpResource[] = [];
@@ -157,7 +159,7 @@ export async function handler(event: any): Promise<string> {
                     `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`
                   );
 
-                  const startStateMachineResponse = await sfnClient.send(
+                  startStateMachineResponse = await sfnClient.send(
                     new StartExecutionCommand({
                       stateMachineArn: stateMachineArn,
                       input: JSON.stringify(action[0]),
