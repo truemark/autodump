@@ -101,7 +101,10 @@ interface eventParameters {
 export async function handler(event: eventParameters): Promise<boolean> {
   const stateMachineArn = event.StateMachineArn;
 
-  if (stateMachineArn !== undefined) {
+  if (stateMachineArn === undefined) {
+    console.log('state machine arn undefined. Exiting.');
+    return false;
+  } else {
     console.log(`handler: state machine arn is ${stateMachineArn}`);
 
     const listSecretsRequest = {
@@ -165,7 +168,7 @@ export async function handler(event: eventParameters): Promise<boolean> {
                     })
                   );
                   console.log(
-                    `start state machine response is ${startStateMachineResponse}`
+                    `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
                   );
                 }
               }
@@ -180,13 +183,7 @@ export async function handler(event: eventParameters): Promise<boolean> {
       return true;
     } catch (error) {
       console.error('Error listing secrets:', error);
-      return {
-        message: `Error listing secrets. ${error}`,
-      };
+      return false;
     }
-  } else {
-    console.log('handler: no state machine arn provided');
-    throw new Error('No state machine arn provided');
-    return false;
   }
 }
