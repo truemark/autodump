@@ -80,9 +80,7 @@ function cronActions(resource: AutoDumpResource): AutoDumpAction[] {
   return actions;
 }
 
-function nextAction(
-  resource: AutoDumpResource
-): AutoDumpAction | undefined {
+function nextAction(resource: AutoDumpResource): AutoDumpAction | undefined {
   let selected = undefined;
   const actions = [...cronActions(resource)];
   for (const action of actions) {
@@ -101,7 +99,9 @@ export async function handler(event: EventParameters): Promise<boolean> {
   const stateMachineArn = event.stateMachineArn;
 
   if (stateMachineArn === undefined) {
-    console.log(`state machine arn undefined. Exiting. input is ${JSON.stringify(event)}`);
+    console.log(
+      `state machine arn undefined. Exiting. input is ${JSON.stringify(event)}`
+    );
     return false;
   } else {
     console.log(`handler: state machine arn is ${stateMachineArn}`);
