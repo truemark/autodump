@@ -1,4 +1,4 @@
-// import {Tag as Tags} from '@aws-sdk/client-secrets-manager';
+import {Tag as Tags} from '@aws-sdk/client-secrets-manager';
 
 export interface AutoDumpTags {
   readonly timezone?: string;

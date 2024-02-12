@@ -6,20 +6,22 @@ import {getTags, hashTagsV1} from './hash-helper';
 
 const currentRegion = process.env.AWS_REGION;
 
-interface eventParameters {
+interface EventParameters {
   readonly SecretArn: string;
   readonly TagsHash: string;
 }
 
-interface returnValue {
+interface ReturnValue {
   readonly hash: string;
   readonly secretArn: string;
   readonly execute: boolean;
   readonly reason: string;
 }
 
-export async function handler(event: eventParameters): Promise<returnValue> {
+export async function handler(event: EventParameters): Promise<ReturnValue> {
   console.log(`event is ${JSON.stringify(event)}`);
+  // TODO fixme
+  // @ts-ignore
   const secretArn = event.Secret;
   const hash = event.TagsHash;
   console.log(`starting function: secretArn is ${secretArn}, hash is ${hash}`);
