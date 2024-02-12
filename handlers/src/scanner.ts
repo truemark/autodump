@@ -82,7 +82,6 @@ function cronActions(resource: AutoDumpResource): AutoDumpAction[] {
 
 function nextAction(
   resource: AutoDumpResource
-  // priorAction?: AutoDumpAction
 ): AutoDumpAction | undefined {
   let selected = undefined;
   const actions = [...cronActions(resource)];
@@ -94,15 +93,15 @@ function nextAction(
   return selected;
 }
 
-interface eventParameters {
-  readonly StateMachineArn: string;
+interface EventParameters {
+  readonly stateMachineArn: string;
 }
 
-export async function handler(event: eventParameters): Promise<boolean> {
-  const stateMachineArn = event.StateMachineArn;
+export async function handler(event: EventParameters): Promise<boolean> {
+  const stateMachineArn = event.stateMachineArn;
 
   if (stateMachineArn === undefined) {
-    console.log('state machine arn undefined. Exiting.');
+    console.log(`state machine arn undefined. Exiting. input is ${JSON.stringify(event)}`);
     return false;
   } else {
     console.log(`handler: state machine arn is ${stateMachineArn}`);

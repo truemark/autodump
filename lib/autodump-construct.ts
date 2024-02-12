@@ -152,7 +152,7 @@ export class AutoDump extends Construct {
         'Execution.$': '$$.Execution',
         'State.$': '$$.State',
         'StateMachine.$': '$$.StateMachine',
-        Secret: JsonPath.stringAt('$.resourceId'),
+        SecretArn: JsonPath.stringAt('$.resourceId'),
         TagsHash: JsonPath.stringAt('$.tagsHash'),
         When: JsonPath.stringAt('$.when'),
       },
@@ -238,7 +238,6 @@ export class AutoDump extends Construct {
           logging: logDriver,
 
           command: ['/usr/local/bin/dumpdb.sh'],
-          // jobRole: batchServiceRole
           jobRole: jobRole,
         }
       ),
@@ -250,7 +249,7 @@ export class AutoDump extends Construct {
       jobQueueArn: jobQueue.jobQueueArn,
       containerOverrides: {
         environment: {
-          SECRET_ARN: JsonPath.stringAt('$.Secret'),
+          SECRET_ARN: JsonPath.stringAt('$.SecretArn'),
         },
       },
     };

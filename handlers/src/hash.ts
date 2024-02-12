@@ -20,9 +20,7 @@ interface ReturnValue {
 
 export async function handler(event: EventParameters): Promise<ReturnValue> {
   console.log(`event is ${JSON.stringify(event)}`);
-  // TODO fixme
-  // @ts-ignore
-  const secretArn = event.Secret;
+  const secretArn = event.SecretArn;
   const hash = event.TagsHash;
   console.log(`starting function: secretArn is ${secretArn}, hash is ${hash}`);
 
@@ -30,6 +28,7 @@ export async function handler(event: EventParameters): Promise<ReturnValue> {
   const input = {
     SecretId: secretArn,
   };
+  console.log(`input before DescribeSecretCommand is ${input}`);
   const command = new DescribeSecretCommand(input);
   const response = await client.send(command);
   console.log(`response is ${JSON.stringify(response.Tags)}`);
@@ -38,8 +37,6 @@ export async function handler(event: EventParameters): Promise<ReturnValue> {
   console.log(`current hash is ${currentHash}`);
 
   if (currentHash === hash) {
-    // return true;
-    // {
     return {
       hash,
       secretArn,

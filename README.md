@@ -1,6 +1,6 @@
-# Welcome to your CDK TypeScript project
+# AutoDump
 
-This is a blank project for CDK development with TypeScript.
+This cdk project automates creation of services that dump a database to S3.
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
@@ -62,6 +62,14 @@ Done in 7.5s
 
 ```
 
+# A Note on Linting
+
+ESLint is configured within this project. The rules are configured this way for a reason. The content of the following files are not to be modified without consulting Erik.
+
+-   .eslintignore
+-   .eslintrc.json
+-   .prettierignore
+
 # Reference
 
-This [article](https://medium.com/tysonworks/manage-batch-jobs-with-aws-batch-1f91229b1b6e) has a largish code example. The full example is behind a Medium firewall.
+This [article](https://medium.com/tysonworks/manage-batch-jobs-with-aws-batch-1f91229b1b6e) has a largish code example. The full example is behind a Medium paywall.

@@ -30,7 +30,7 @@ export class HashFunction extends NodejsFunction {
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
-          'secretsmanager:GetSecretValue',
+          // 'secretsmanager:GetSecretValue',
           'secretsmanager:DescribeSecret',
           'secretsmanager:ListSecrets',
         ],

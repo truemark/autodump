@@ -35,7 +35,6 @@ export class ScannerFunction extends NodejsFunction {
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
-          'secretsmanager:GetSecretValue',
           'secretsmanager:DescribeSecret',
           'secretsmanager:ListSecrets',
         ],
