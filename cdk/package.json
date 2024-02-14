@@ -19,7 +19,7 @@
     "posttest": "npm run lint",
     "makepretty": "prettier --write .",
     "cdk": "cdk",
-    "postinstall": ""
+    "postinstall": "cd ../handlers && pnpm i --frozen-lockfile"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
