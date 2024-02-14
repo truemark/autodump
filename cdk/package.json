@@ -12,14 +12,14 @@
   },
   "scripts": {
     "build": "tsc",
-    "postbuild": "prettier --check . && gts lint && cd handlers && pnpm build",
+    "postbuild": "prettier --check . && gts lint",
     "watch": "tsc -w",
     "test": "jest --coverage --collectCoverageFrom='src/**/*.{ts,tsx}'",
     "lint": "gts lint",
     "posttest": "npm run lint",
     "makepretty": "prettier --write .",
     "cdk": "cdk",
-    "postinstall": "cd handlers && pnpm i --frozen-lockfile"
+    "postinstall": ""
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
