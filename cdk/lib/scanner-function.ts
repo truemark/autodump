@@ -18,7 +18,7 @@ export class ScannerFunction extends NodejsFunction {
       memorySize: 512,
       timeout: Duration.seconds(40),
       logRetention: RetentionDays.ONE_MONTH,
-      entry: path.join(__dirname, '..', 'handlers', 'src', 'scanner.ts'),
+      entry: path.join(__dirname, '..', '..', 'handlers', 'src', 'scanner.ts'),
       handler: 'handler',
       environment: {
         TAG_NAME: props.tagName,

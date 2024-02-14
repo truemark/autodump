@@ -19,7 +19,7 @@ export class HashFunction extends NodejsFunction {
       memorySize: 512,
       timeout: Duration.seconds(40),
       logRetention: RetentionDays.ONE_MONTH,
-      entry: path.join(__dirname, '..', 'handlers', 'src', 'hash.ts'),
+      entry: path.join(__dirname, '..', '..', 'handlers', 'src', 'hash.ts'),
       handler: 'handler',
       environment: {
         SECRET_ARN: props.secretArn,
@@ -30,7 +30,6 @@ export class HashFunction extends NodejsFunction {
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
-          // 'secretsmanager:GetSecretValue',
           'secretsmanager:DescribeSecret',
           'secretsmanager:ListSecrets',
         ],

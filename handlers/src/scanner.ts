@@ -96,7 +96,7 @@ interface EventParameters {
 }
 
 export async function handler(event: EventParameters): Promise<boolean> {
-  const stateMachineArn = event.stateMachineArn;
+  const stateMachineArn = event.StateMachineArn;
 
   if (stateMachineArn === undefined) {
     console.log(
