@@ -92,7 +92,7 @@ function nextAction(resource: AutoDumpResource): AutoDumpAction | undefined {
 }
 
 interface EventParameters {
-  readonly stateMachineArn: string;
+  readonly StateMachineArn: string;
 }
 
 export async function handler(event: EventParameters): Promise<boolean> {
