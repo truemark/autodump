@@ -67,7 +67,7 @@ export class AutoDump extends Construct {
     // TODO: Write a function that queries all the possible private subnet types
     // so a subnet type error can be handled.
     const privateSubnets = vpc.selectSubnets({
-      subnetType: SubnetType.PRIVATE_WITH_NAT,
+      subnetType: SubnetType.PRIVATE_WITH_NAT, // TODO You cannot assume this, you must pass in one or more subnetIds as part of the AutoDumpProps class.
       // My sandbox has "PRIVATE_ISOLATED" private su
       // subnetType: SubnetType.PRIVATE_WITH_EGRESS,
       // subnetType: SubnetType.PRIVATE_ISOLATED,
@@ -80,6 +80,7 @@ export class AutoDump extends Construct {
       maxvCpus: 4,
     };
 
+    // TODO I do not see where this is scheduled. I was expecting a scan to be done daily scheduled via event brdige.
     const scannerFunction = new ScannerFunction(this, 'ScannerFunction', {
       tagName: 'autodump:start-schedule',
     });
@@ -269,7 +270,7 @@ export class AutoDump extends Construct {
           new Choice(this, 'Do the hashes match?')
             .when(
               Condition.booleanEquals('$.LambdaOutput.Payload.execute', false),
-              jobFailed
+              jobFailed // TODO The job shouldn' fail just because the hashes match. A failure implies an error and this is not an error condition. The idea is that if someone changes the schedule by updating the tag the hash won't match so we just silently exit this run and let the new schedule play out which should be a separate state machine execution.
             )
             .when(
               Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
@@ -287,6 +288,9 @@ export class AutoDump extends Construct {
               )
             )
         )
+      // TODO Where do we schedule the next run? The idea is that there is always a state machine execution running for a secret when it's tagged. When the execution is done, another is started. This is also how autostate works.
+      // TODO Continued: So, if I had 2 secrets tagged for autodump. I should be able to look at the state machine and see two executions, one for each database in a waiting state for their time to run.
+      // TODO I do not see any event bridge rules listening for tag changes to schedule these dump runs.
     );
 
     const stateMachine = new StateMachine(this, 'Default', {
@@ -296,7 +300,7 @@ export class AutoDump extends Construct {
         level: LogLevel.ALL,
       },
       role: batchServiceRole,
-      timeout: Duration.hours(6),
+      timeout: Duration.hours(6), // TODO I don't see how this works since a state machine execution could last many days depending on the cron schedule applied in the tag
       comment: 'Database dump state machine.',
     });
 
