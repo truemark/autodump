@@ -1,5 +1,5 @@
 {
-  "name": "autodump",
+  "name": "autodump-cdk",
   "version": "0.1.0",
   "description": "An AWS CDK project that natively exports databases to S3 through tags.",
   "homepage": "https://github.com/truemark/autodump",
@@ -18,8 +18,7 @@
     "lint": "gts lint",
     "posttest": "npm run lint",
     "makepretty": "prettier --write .",
-    "cdk": "cdk",
-    "postinstall": "cd ../handlers && pnpm i --frozen-lockfile"
+    "cdk": "cdk"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
