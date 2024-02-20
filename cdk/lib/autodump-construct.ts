@@ -25,7 +25,7 @@ import {
 import {LogGroup} from 'aws-cdk-lib/aws-logs';
 import {ScannerFunction} from './scanner-function';
 import {HashFunction} from './hash-function';
-import {SubnetType, Vpc} from 'aws-cdk-lib/aws-ec2';
+import {SubnetSelection, Subnet, Vpc} from 'aws-cdk-lib/aws-ec2';
 import {
   EcsFargateContainerDefinition,
   EcsJobDefinition,
@@ -60,22 +60,16 @@ export class AutoDump extends Construct {
       privateSubnetIds: props.privateSubnetIds,
     });
 
-    // Per AWS Support, any VPC created outside of the local cdk stack will only
-    // be visible to cdk by using the deprecated network type PRIVATE_WITH_NAT.
-    // He basically told me to use it and forget that it's marked as deprecated.
-    // In my sandbox, these are available as SubnetType.ISOLATED.
-    // TODO: Write a function that queries all the possible private subnet types
-    // so a subnet type error can be handled.
-    const privateSubnets = vpc.selectSubnets({
-      subnetType: SubnetType.PRIVATE_WITH_NAT, // TODO You cannot assume this, you must pass in one or more subnetIds as part of the AutoDumpProps class.
-      // My sandbox has "PRIVATE_ISOLATED" private su
-      // subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-      // subnetType: SubnetType.PRIVATE_ISOLATED,
-    });
+    // TODO You cannot assume this, you must pass in one or more subnetIds as part of the AutoDumpProps class.
+    const specificSubnets: SubnetSelection = {
+      subnets: props.privateSubnetIds.map(id =>
+        Subnet.fromSubnetId(this, `Subnet${id}`, id)
+      ),
+    };
 
     const fargateComputeEnvironmentProps: FargateComputeEnvironmentProps = {
       vpc: vpc,
-      vpcSubnets: privateSubnets,
+      vpcSubnets: specificSubnets,
       spot: false,
       maxvCpus: 4,
     };
@@ -300,7 +294,7 @@ export class AutoDump extends Construct {
         level: LogLevel.ALL,
       },
       role: batchServiceRole,
-      timeout: Duration.hours(6), // TODO I don't see how this works since a state machine execution could last many days depending on the cron schedule applied in the tag
+      timeout: Duration.hours(168), // TODO I don't see how this works since a state machine execution could last many days depending on the cron schedule applied in the tag
       comment: 'Database dump state machine.',
     });
 

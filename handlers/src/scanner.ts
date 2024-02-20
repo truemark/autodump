@@ -1,7 +1,10 @@
 import {
+  GetSecretValueCommand,
+  GetSecretValueCommandOutput,
   SecretsManagerClient,
   ListSecretsCommand,
 } from '@aws-sdk/client-secrets-manager';
+
 import * as cron from 'cron-parser';
 import {CronExpression} from 'cron-parser/types';
 import {SFNClient, StartExecutionCommand} from '@aws-sdk/client-sfn';
@@ -95,6 +98,36 @@ interface EventParameters {
   readonly StateMachineArn: string;
 }
 
+interface SecretString {
+  readonly password: string;
+  readonly username: string;
+  readonly endpoint: string;
+  readonly engine: string;
+  readonly bucketname: string;
+  readonly databasename: string;
+}
+async function getDatabaseName(secretName: string): Promise<string> {
+  try {
+    // Create the command
+    const command = new GetSecretValueCommand({
+      SecretId: secretName,
+    });
+
+    // Send the request and get the response
+    const response: GetSecretValueCommandOutput = await client.send(command);
+    // response.SecretString
+    const secretObject: SecretString = response.SecretString
+      ? JSON.parse(response.SecretString)
+      : {};
+    console.log(`getDatabaseName: secretObject is ${secretObject}`);
+
+    return secretObject.databasename;
+  } catch (error) {
+    console.error('Error fetching secret: ', error);
+    throw error;
+  }
+}
+
 export async function handler(event: EventParameters): Promise<boolean> {
   const stateMachineArn = event.StateMachineArn;
 
@@ -153,7 +186,13 @@ export async function handler(event: EventParameters): Promise<boolean> {
                   });
 
                   const epoch = Date.now();
-                  const jobName = secret.Name + '-' + epoch;
+
+                  const databaseName: string = await getDatabaseName(
+                    secret.ARN
+                  );
+
+                  const jobName =
+                    secret.Name + '-' + databaseName + '-' + epoch;
 
                   console.log(
                     `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`

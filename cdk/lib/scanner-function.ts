@@ -16,7 +16,7 @@ export class ScannerFunction extends NodejsFunction {
       runtime: Runtime.NODEJS_20_X,
       architecture: Architecture.ARM_64,
       memorySize: 512,
-      timeout: Duration.seconds(40), // TODO This seems short for accounts that may have many secrets.
+      timeout: Duration.seconds(900), // TODO This seems short for accounts that may have many secrets.
       logRetention: RetentionDays.ONE_MONTH,
       entry: path.join(__dirname, '..', '..', 'handlers', 'src', 'scanner.ts'),
       handler: 'handler',
@@ -35,9 +35,12 @@ export class ScannerFunction extends NodejsFunction {
     this.addToRolePolicy(
       new PolicyStatement({
         actions: [
+          'secretsmanager:GetSecretValue',
           'secretsmanager:DescribeSecret',
           'secretsmanager:ListSecrets',
+          'kms:decrypt',
         ],
+        // TODO: Narrow  down to autodump secrets, by tag or prefix, and the KMS key used to encrypt them.
         resources: ['*'],
       })
     );
