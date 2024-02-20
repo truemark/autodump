@@ -6,7 +6,7 @@ This cdk project automates creation of services that dump a database to S3.
 AutoDump scans all secrets within an account, and looks for secrets that have autodump tags. If it finds any, it will fire a state machine execution that will dump the database to S3.
 
 ![img/img3.png](img/img3.png)
-Step 1. The Scanner Lambda fires up, initiates the process by scanning all secrets within the account. It identifies which secrets are tagged for AutoDump scheduling.
+Step 1. The Scanner Lambda is scheduled to run daily at midnight UTC. It initiates the process by scanning all secrets within the account. It identifies which secrets are tagged for AutoDump scheduling.
 
 Step 2. For each identified secret, the Lambda determines the appropriate schedule time and calculates the tag hash. This information is used to configure the execution parameters when firing the state machine execution in the next step.
 
