@@ -19,7 +19,7 @@ Step 5. The AWS Batch job runs the dump command, which intially stores the dumpf
 
 Step 6. The state machine evalutes the exit status of the AWS Batch job. 
 
-### Creating an AutoDump secret
+## Creating an AutoDump secret
 
 The secret value must have the following values below, and the user must be granted the appropriate privileges within the engine.
 
