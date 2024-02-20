@@ -40,6 +40,8 @@ import {
   BatchSubmitJobProps,
   LambdaInvoke,
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import {Rule, Schedule} from 'aws-cdk-lib/aws-events';
+import {LambdaFunction} from 'aws-cdk-lib/aws-events-targets';
 
 export interface AutoDumpProps {
   readonly tagPrefix?: string;
@@ -60,7 +62,7 @@ export class AutoDump extends Construct {
       privateSubnetIds: props.privateSubnetIds,
     });
 
-    // TODO You cannot assume this, you must pass in one or more subnetIds as part of the AutoDumpProps class.
+    // TODO You cannot assume this, you must pass in one or more subnetIds as part of the AutoDumpProps class. : fixed
     const specificSubnets: SubnetSelection = {
       subnets: props.privateSubnetIds.map(id =>
         Subnet.fromSubnetId(this, `Subnet${id}`, id)
@@ -74,7 +76,7 @@ export class AutoDump extends Construct {
       maxvCpus: 4,
     };
 
-    // TODO I do not see where this is scheduled. I was expecting a scan to be done daily scheduled via event brdige.
+    // TODO I do not see where this is scheduled. I was expecting a scan to be done daily scheduled via event brdige. :fixed
     const scannerFunction = new ScannerFunction(this, 'ScannerFunction', {
       tagName: 'autodump:start-schedule',
     });
@@ -264,7 +266,7 @@ export class AutoDump extends Construct {
           new Choice(this, 'Do the hashes match?')
             .when(
               Condition.booleanEquals('$.LambdaOutput.Payload.execute', false),
-              jobFailed // TODO The job shouldn' fail just because the hashes match. A failure implies an error and this is not an error condition. The idea is that if someone changes the schedule by updating the tag the hash won't match so we just silently exit this run and let the new schedule play out which should be a separate state machine execution.
+              jobSuccess // TODO The job shouldn' fail just because the hashes match. A failure implies an error and this is not an error condition. The idea is that if someone changes the schedule by updating the tag the hash won't match so we just silently exit this run and let the new schedule play out which should be a separate state machine execution. :fixed
             )
             .when(
               Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
@@ -284,7 +286,9 @@ export class AutoDump extends Construct {
         )
       // TODO Where do we schedule the next run? The idea is that there is always a state machine execution running for a secret when it's tagged. When the execution is done, another is started. This is also how autostate works.
       // TODO Continued: So, if I had 2 secrets tagged for autodump. I should be able to look at the state machine and see two executions, one for each database in a waiting state for their time to run.
+      // TODO FIXED: Each execution starts with the event bridge rule firing the scanner lambda.
       // TODO I do not see any event bridge rules listening for tag changes to schedule these dump runs.
+      // TODO FIXED: Correct. All executions start from the scanner lambda. We discussed leaving listening to tag change events for a future iteration.I will gladly add it if need be.
     );
 
     const stateMachine = new StateMachine(this, 'Default', {
@@ -295,6 +299,7 @@ export class AutoDump extends Construct {
       },
       role: batchServiceRole,
       timeout: Duration.hours(168), // TODO I don't see how this works since a state machine execution could last many days depending on the cron schedule applied in the tag
+      // TODO FIXED: bumped hours to 168 = 7 days. We could parameterize this?
       comment: 'Database dump state machine.',
     });
 
@@ -314,5 +319,16 @@ export class AutoDump extends Construct {
         resources: [autoDumpBucket.bucketArn],
       })
     );
+
+    // Fire the scanner lambda daily at midnight UTC.
+    const schedule = Schedule.cron({
+      minute: '0',
+      hour: '0',
+    });
+
+    const scheduledRule = new Rule(this, 'ScheduleRule', {
+      schedule,
+    });
+    scheduledRule.addTarget(new LambdaFunction(scannerFunction));
   }
 }
