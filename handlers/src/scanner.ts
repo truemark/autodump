@@ -98,6 +98,7 @@ interface EventParameters {
   readonly StateMachineArn: string;
 }
 
+// This is the format of the secret. If these properties do not exist, everything will fail.
 interface SecretString {
   readonly password: string;
   readonly username: string;
@@ -119,11 +120,10 @@ async function getDatabaseName(secretName: string): Promise<string> {
     const secretObject: SecretString = response.SecretString
       ? JSON.parse(response.SecretString)
       : {};
-    console.log(`getDatabaseName: secretObject is ${secretObject}`);
 
     return secretObject.databasename;
   } catch (error) {
-    console.error('Error fetching secret: ', error);
+    console.error('Error fetching database name from secret. Exiting. ', error);
     throw error;
   }
 }
@@ -191,8 +191,13 @@ export async function handler(event: EventParameters): Promise<boolean> {
                     secret.ARN
                   );
 
-                  const jobName =
-                    secret.Name + '-' + databaseName + '-' + epoch;
+                  let jobName = '';
+                  if (secret.Name !== undefined && databaseName !== undefined) {
+                    jobName = `${secret.Name.slice(
+                      0,
+                      60
+                    )}-${databaseName}-${epoch}`;
+                  }
 
                   console.log(
                     `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`
