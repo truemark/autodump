@@ -2,7 +2,42 @@
 
 This cdk project automates creation of services that dump a database to S3.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## How this works
+AutoDump scans all secrets within an account, and looks for secrets that have autodump tags. If it finds any, it will fire a state machine execution that will dump the database to S3.
+
+![img/img2.png](img/img2.png)
+
+Step 1. The Scanner Lambda fires up, identifies secrets that must be scheduled, what time to schedule each secret, calculates the tag hash, and starts the state machine execution in Step 2.
+
+Step 2. The state machine enters a wait state until the scheduled time as calculated in Step 1. 
+
+Step 3. The state machine fires the Hash Lambda to calculate the current tag hash value. 
+
+Step 4. If the tag hash value is the same as the one calculated in Step 1, the state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR.
+
+Step 5. The AWS Batch job runs the dump command, which intially stores the dumpfile locally, and then copies it to S3.
+
+Step 6. The state machine evalutes the exit status of the AWS Batch job. 
+
+### Creating an AutoDump secret
+
+The secret value must have the following values below, and the user must be granted the appropriate privileges within the engine.
+
+
+| col1 | col2                                                                                                                                                          | 
+|--|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| username | The username of the database account that will execute the dump. This can be named 'autodump', however the only limitations are those of the database engine. |
+| password | The password of the database account. Limitations of database engine apply here also.                                                                         |
+| databasename | The name of the database to export. The database must exist on the database server.                                                                           |
+| endpoint | The RDS endpoint where the database resides.                                                                                                                  |
+| engine | The database engine. Currently only postgres is supported.                                                                                                    |
+| bucketname | The name of the bucket where dump files are stored.                                                                                                           |
+
+Below is a screen shot of a sample AutoDump secret value.
+
+![img/img.png](img/img.png)
+
+
 
 ## Useful commands
 
