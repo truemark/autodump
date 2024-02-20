@@ -5,33 +5,33 @@ This cdk project automates creation of services that dump a database to S3.
 ## How this works
 AutoDump scans all secrets within an account, and looks for secrets that have autodump tags. If it finds any, it will fire a state machine execution that will dump the database to S3.
 
-![img/img2.png](img/img2.png)
+![img/img3.png](img/img3.png)
+Step 1. The Scanner Lambda fires up, initiates the process by scanning all secrets within the account. It identifies which secrets are tagged for AutoDump scheduling.
 
-Step 1. The Scanner Lambda fires up, identifies secrets that must be scheduled, what time to schedule each secret, calculates the tag hash, and starts the state machine execution in Step 2.
+Step 2. For each identified secret, the Lambda determines the appropriate schedule time and calculates the tag hash. This information is used to configure the execution parameters when firing the state machine execution in the next step.
 
-Step 2. The state machine enters a wait state until the scheduled time as calculated in Step 1. 
+Step 3. The state machine is triggered to start. It first enters a wait state until the scheduled time as calculated in Step 2. 
 
-Step 3. The state machine fires the Hash Lambda to calculate the current tag hash value. 
+Step 4. After the wait state expires, the state machine fires the Hash Lambda to calculate the current tag hash value. 
 
-Step 4. If the tag hash value is the same as the one calculated in Step 1, the state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR.
+Step 5. If the tag hash value is the same as the one calculated in Step 1, the state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR.
 
-Step 5. The AWS Batch job runs the dump command, which intially stores the dumpfile locally, and then copies it to S3.
+Step 6. The AWS Batch job runs the dump command, which intially stores the dumpfile locally, and then copies it to S3.
 
-Step 6. The state machine evalutes the exit status of the AWS Batch job. 
+Step 7. The state machine evalutes the exit status of the AWS Batch job. 
 
 ## Creating an AutoDump secret
 
-The secret value must have the following values below, and the user must be granted the appropriate privileges within the engine.
+The secret value must have the values listed below.
 
-
-| col1 | col2                                                                                                                                                          | 
-|--|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| username | The username of the database account that will execute the dump. This can be named 'autodump', however the only limitations are those of the database engine. |
-| password | The password of the database account. Limitations of database engine apply here also.                                                                         |
-| databasename | The name of the database to export. The database must exist on the database server.                                                                           |
-| endpoint | The RDS endpoint where the database resides.                                                                                                                  |
-| engine | The database engine. Currently only postgres is supported.                                                                                                    |
-| bucketname | The name of the bucket where dump files are stored.                                                                                                           |
+| col1 | col2                                                                                                                                                                                                                                                  | 
+|--|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| username | The username of the database account that will execute the dump. This user must have the appropriate privileges granted within the database engine. This user can be named 'autodump', however the only limitations are those of the database engine. |
+| password | The password of the database account. Limitations of database engine apply here also.                                                                                                                                                                 |
+| databasename | The name of the database to export. The database must exist on the database server referenced in endpoint.                                                                                                                                            |
+| endpoint | The RDS endpoint where the database resides.                                                                                                                                                                                                          |
+| engine | The database engine. Currently only postgres is supported.                                                                                                                                                                                            |
+| bucketname | The name of the bucket where dump files are stored.                                                                                                                                                                                                   |
 
 Below is a screen shot of a sample AutoDump secret value.
 
