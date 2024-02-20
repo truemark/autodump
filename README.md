@@ -37,7 +37,12 @@ Below is a screen shot of a sample AutoDump secret value.
 
 ![img/img.png](img/img.png)
 
+## Supported Tags
 
+| Tag                     | Description                                                                                                        |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------|
+| autodump:timezone       | The timezone to use when interpreting schedules. Defaults to UTC. Example: America/Denver                          |
+| autodump:start-schedule | The schedule as a cron expression to start the resource. Example: 0 8 * * 1-5      
 
 ## Useful commands
 
