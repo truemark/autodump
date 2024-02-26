@@ -327,7 +327,7 @@ export class AutoDump extends Construct {
 
     // Fire the scanner lambda daily at midnight UTC.
     const schedule = Schedule.cron({
-      minute: '0',
+      minute: '20',
       hour: '23',
     });
 

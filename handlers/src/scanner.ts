@@ -87,10 +87,12 @@ function nextAction(resource: AutoDumpResource): AutoDumpAction | undefined {
   let selected = undefined;
   const actions = [...cronActions(resource)];
   for (const action of actions) {
+    console.log(`nextAction: action.when is ${action.when}`)
     if (selected === undefined || action.when < selected.when) {
       selected = action;
     }
   }
+  console.log(`nextAction: selected is ${selected}`)
   return selected;
 }
 
@@ -147,12 +149,7 @@ function formatTimestamp(timestamp: string): string {
   return `${year}-${formattedMonth}-${formattedDay}-${formattedHours}-${formattedMinutes}`;
 }
 
-// Usage example
-// const timestamp = "2024-02-27T16:37:00.000Z";
-// console.log(formatTimestamp(timestamp)); // Outputs: yyyy-mm-dd-hh24:mi
-
 export async function handler(event: EventParameters): Promise<boolean> {
-  // const StateMachineArn = event.StateMachineArn;
 
   // Parsing the 'input' field to get the State Machine ARN
   const input = event.input;
@@ -165,10 +162,9 @@ export async function handler(event: EventParameters): Promise<boolean> {
     return false;
   } else {
     // Use the State Machine ARN
-    console.log('State Machine ARN:', parsedInput.stateMachineArn);
     stateMachineArn = parsedInput.stateMachineArn;
+    console.log(`handler: stateMachineARN is:, ${stateMachineArn}`);
 
-    console.log(`handler: state machine arn is ${stateMachineArn}`);
 
     const listSecretsRequest = {
       MaxResults: 100,
@@ -217,7 +213,7 @@ export async function handler(event: EventParameters): Promise<boolean> {
                   });
 
                   const executionTime = formatTimestamp(nextTime.when);
-                  console.log(`executionTime as a formatted string is ${executionTime}`)
+                  console.log(`nextTime: executionTime as a formatted string is ${executionTime}`)
                   const databaseName: string = await getDatabaseName(
                     secret.ARN
                   );
