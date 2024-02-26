@@ -95,7 +95,8 @@ function nextAction(resource: AutoDumpResource): AutoDumpAction | undefined {
 }
 
 interface EventParameters {
-  readonly StateMachineArn: string;
+  readonly input: string;
+  readonly stateMachineArn: string;
 }
 
 // This is the format of the secret. If these properties do not exist, everything will fail.
@@ -128,15 +129,45 @@ async function getDatabaseName(secretName: string): Promise<string> {
   }
 }
 
-export async function handler(event: EventParameters): Promise<boolean> {
-  const stateMachineArn = event.StateMachineArn;
+function formatTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
 
-  if (stateMachineArn === undefined) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1; // getMonth() returns 0-11
+  const day = date.getDate();
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+
+  // Pad single digit month, day, hours, and minutes with leading zeros
+  const formattedMonth = month < 10 ? `0${month}` : month;
+  const formattedDay = day < 10 ? `0${day}` : day;
+  const formattedHours = hours < 10 ? `0${hours}` : hours;
+  const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+
+  return `${year}-${formattedMonth}-${formattedDay}-${formattedHours}-${formattedMinutes}`;
+}
+
+// Usage example
+// const timestamp = "2024-02-27T16:37:00.000Z";
+// console.log(formatTimestamp(timestamp)); // Outputs: yyyy-mm-dd-hh24:mi
+
+export async function handler(event: EventParameters): Promise<boolean> {
+  // const StateMachineArn = event.StateMachineArn;
+
+  // Parsing the 'input' field to get the State Machine ARN
+  const input = event.input;
+  const parsedInput: EventParameters = JSON.parse(input);
+  let stateMachineArn = '';
+  if (parsedInput.stateMachineArn === undefined) {
     console.log(
       `state machine arn undefined. Exiting. input is ${JSON.stringify(event)}`
     );
     return false;
   } else {
+    // Use the State Machine ARN
+    console.log('State Machine ARN:', parsedInput.stateMachineArn);
+    stateMachineArn = parsedInput.stateMachineArn;
+
     console.log(`handler: state machine arn is ${stateMachineArn}`);
 
     const listSecretsRequest = {
@@ -185,8 +216,8 @@ export async function handler(event: EventParameters): Promise<boolean> {
                     when: nextTime.when,
                   });
 
-                  const epoch = Date.now();
-
+                  const executionTime = formatTimestamp(nextTime.when);
+                  console.log(`executionTime as a formatted string is ${executionTime}`)
                   const databaseName: string = await getDatabaseName(
                     secret.ARN
                   );
@@ -196,7 +227,7 @@ export async function handler(event: EventParameters): Promise<boolean> {
                     jobName = `${secret.Name.slice(
                       0,
                       60
-                    )}-${databaseName}-${epoch}`;
+                    )}-${databaseName}-${executionTime}`;
                   }
 
                   console.log(

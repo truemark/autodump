@@ -40,7 +40,12 @@ import {
   BatchSubmitJobProps,
   LambdaInvoke,
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import {Rule, Schedule} from 'aws-cdk-lib/aws-events';
+import {
+  Rule,
+  RuleTargetInput,
+  RuleTargetInputProperties,
+  Schedule,
+} from 'aws-cdk-lib/aws-events';
 import {LambdaFunction} from 'aws-cdk-lib/aws-events-targets';
 
 export interface AutoDumpProps {
@@ -323,12 +328,24 @@ export class AutoDump extends Construct {
     // Fire the scanner lambda daily at midnight UTC.
     const schedule = Schedule.cron({
       minute: '0',
-      hour: '0',
+      hour: '23',
     });
+
+    interface AutoDumpRuleTargetInputProperties {
+      readonly input: string;
+    }
+
+    const ruleTargetInputProps: AutoDumpRuleTargetInputProperties = {
+      input: `{"stateMachineArn": "${stateMachine.stateMachineArn}"}`,
+    };
 
     const scheduledRule = new Rule(this, 'ScheduleRule', {
       schedule,
+      targets: [
+        new LambdaFunction(scannerFunction, {
+          event: RuleTargetInput.fromObject(ruleTargetInputProps),
+        }),
+      ],
     });
-    scheduledRule.addTarget(new LambdaFunction(scannerFunction));
   }
 }
