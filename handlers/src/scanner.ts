@@ -87,12 +87,12 @@ function nextAction(resource: AutoDumpResource): AutoDumpAction | undefined {
   let selected = undefined;
   const actions = [...cronActions(resource)];
   for (const action of actions) {
-    console.log(`nextAction: action.when is ${action.when}`)
+    console.log(`nextAction: action.when is ${action.when}`);
     if (selected === undefined || action.when < selected.when) {
       selected = action;
     }
   }
-  console.log(`nextAction: selected is ${selected}`)
+  console.log(`nextAction: selected is JSON.stringify(${selected})`);
   return selected;
 }
 
@@ -150,7 +150,6 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export async function handler(event: EventParameters): Promise<boolean> {
-
   // Parsing the 'input' field to get the State Machine ARN
   const input = event.input;
   const parsedInput: EventParameters = JSON.parse(input);
@@ -164,7 +163,6 @@ export async function handler(event: EventParameters): Promise<boolean> {
     // Use the State Machine ARN
     stateMachineArn = parsedInput.stateMachineArn;
     console.log(`handler: stateMachineARN is:, ${stateMachineArn}`);
-
 
     const listSecretsRequest = {
       MaxResults: 100,
@@ -213,7 +211,9 @@ export async function handler(event: EventParameters): Promise<boolean> {
                   });
 
                   const executionTime = formatTimestamp(nextTime.when);
-                  console.log(`nextTime: executionTime as a formatted string is ${executionTime}`)
+                  console.log(
+                    `nextTime: executionTime as a formatted string is ${executionTime}`
+                  );
                   const databaseName: string = await getDatabaseName(
                     secret.ARN
                   );
