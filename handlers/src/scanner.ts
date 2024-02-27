@@ -150,13 +150,14 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export async function handler(event: EventParameters): Promise<boolean> {
+  console.log(`handler: event is ${JSON.stringify(event)}`);
   // Parsing the 'input' field to get the State Machine ARN
   const input = event.input;
   const parsedInput: EventParameters = JSON.parse(input);
   let stateMachineArn = '';
   if (parsedInput.stateMachineArn === undefined) {
     console.log(
-      `state machine arn undefined. Exiting. input is ${JSON.stringify(event)}`
+      `stateMachineArn undefined. Exiting. input is ${JSON.stringify(event)}`
     );
     return false;
   } else {
@@ -164,6 +165,7 @@ export async function handler(event: EventParameters): Promise<boolean> {
     stateMachineArn = parsedInput.stateMachineArn;
     console.log(`handler: stateMachineARN is:, ${stateMachineArn}`);
 
+    // 100 is the maximum value for MaxResults.
     const listSecretsRequest = {
       MaxResults: 100,
     };
@@ -223,23 +225,29 @@ export async function handler(event: EventParameters): Promise<boolean> {
                     jobName = `${secret.Name.slice(
                       0,
                       60
-                    )}-${databaseName}-${executionTime}`;
+                    )}-${databaseName}-${executionTime}`.slice(0, 80);
                   }
 
                   console.log(
                     `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`
                   );
 
-                  const startStateMachineResponse = await sfnClient.send(
-                    new StartExecutionCommand({
-                      stateMachineArn: stateMachineArn,
-                      input: JSON.stringify(action[0]),
-                      name: jobName.slice(0, 80),
-                    })
-                  );
-                  console.log(
-                    `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
-                  );
+                  try {
+                    const startStateMachineResponse = await sfnClient.send(
+                      new StartExecutionCommand({
+                        stateMachineArn: stateMachineArn,
+                        input: JSON.stringify(action[0]),
+                        name: jobName,
+                      })
+                    );
+                    console.log(
+                      `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
+                    );
+                  } catch (error) {
+                    console.log(
+                      `Job name ${jobName} is a duplicate. Exiting gracefully.`
+                    );
+                  }
                 }
               }
             }

@@ -113,3 +113,11 @@ ESLint is configured within this project. The rules are configured this way for 
 # Reference
 
 This [article](https://medium.com/tysonworks/manage-batch-jobs-with-aws-batch-1f91229b1b6e) has a largish code example. The full example is behind a Medium paywall.
+
+# Notes
+Below is a sample of the event from Event Bridge to Lambda. If needed, use this format to create a manual test configuration in Lambda.
+```angular2html
+{
+    "input": "{\"stateMachineArn\": \"arn:aws:states:us-west-2:123456666789:stateMachine:AutoDump99630B31-aY2voyWGlOSc\"}"
+}
+```
