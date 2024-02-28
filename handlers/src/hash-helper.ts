@@ -42,20 +42,17 @@ export function getTags(tags?: Tags[]): AutoDumpTags {
     return {};
   }
 
-  const autoDumpTags =
-    tags.reduce((tags, tag) => {
-      const autoDumpTags: Record<string, string> = {};
-      if (
-        tag.Key &&
-        tag.Value &&
-        Object.values(AutoDumpTag).includes(tag.Key as AutoDumpTag)
-      ) {
-        const key = toCamelCase(tag.Key.replace('autodump:', ''));
-        autoDumpTags[key] = tag.Value.trim();
-      }
-      return {
-        ...autoDumpTags,
-      };
-    }, {} as AutoDumpTags) ?? {};
-  return autoDumpTags;
+  console.log(`getTags: tags is ${JSON.stringify(tags)}`);
+  return tags.reduce((accumulatedTags, tag) => {
+    if (
+      tag.Key &&
+      tag.Value &&
+      Object.values(AutoDumpTag).includes(tag.Key as AutoDumpTag)
+    ) {
+      const key = toCamelCase(tag.Key.replace('autodump:', ''));
+      // @ts-ignore
+      accumulatedTags[key] = tag.Value.trim();
+    }
+    return accumulatedTags;
+  }, {} as AutoDumpTags);
 }

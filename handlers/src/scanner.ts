@@ -55,8 +55,18 @@ function cronAction(
   resource: AutoDumpResource,
   cronExpression: string
 ): AutoDumpAction | undefined {
+  console.log(
+    `cronAction: resource is ${JSON.stringify(
+      resource
+    )}, cronExpression is ${cronExpression}`
+  );
   const tz = resource.tags.timezone ?? 'UTC';
   const expression = optionalCron(cronExpression, tz);
+  console.log(
+    `cronAction: timezone is i${tz}, expression is ${JSON.stringify(
+      expression
+    )}, resource is ${JSON.stringify(resource)}`
+  );
   if (expression && expression.hasNext()) {
     return {
       resourceId: resource.id,
@@ -86,13 +96,14 @@ function cronActions(resource: AutoDumpResource): AutoDumpAction[] {
 function nextAction(resource: AutoDumpResource): AutoDumpAction | undefined {
   let selected = undefined;
   const actions = [...cronActions(resource)];
+  console.log(`nextAction: actions are ${JSON.stringify(actions)}`);
   for (const action of actions) {
     console.log(`nextAction: action.when is ${action.when}`);
     if (selected === undefined || action.when < selected.when) {
       selected = action;
     }
   }
-  console.log(`nextAction: selected is JSON.stringify(${selected})`);
+  console.log(`nextAction: selected is ${JSON.stringify(selected)}`);
   return selected;
 }
 
@@ -171,21 +182,16 @@ export async function handler(event: EventParameters): Promise<boolean> {
     };
 
     const command = new ListSecretsCommand(listSecretsRequest);
-    const listSecretsResponse = await client.send(command);
-
-    console.log(
-      `listSecretsResponse.SecretList is ${listSecretsResponse.SecretList}`
-    );
+    const listSecretsCommandOutput = await client.send(command);
 
     try {
-      if (listSecretsResponse.SecretList) {
+      if (listSecretsCommandOutput.SecretList) {
         const resources: AutoDumpResource[] = [];
         const action: AutoDumpAction[] = [];
 
-        for (const secret of listSecretsResponse.SecretList) {
-          console.log(`Accessing tags for secret: ${secret.Name}`);
-
+        for (const secret of listSecretsCommandOutput.SecretList) {
           if (typeof secret.Tags !== 'undefined' && secret.Tags.length > 0) {
+            console.log(`secret.Tags is ${JSON.stringify(secret.Tags)}`);
             for (const tag of secret.Tags) {
               if (
                 tag.Key === AutoDumpTag.START_SCHEDULE &&
@@ -197,12 +203,16 @@ export async function handler(event: EventParameters): Promise<boolean> {
                   `Secret eligible for scheduling: ${secret.Name} tag present: ${tag.Key}, schedule is ${tag.Value}`
                 );
                 const tags = getTags(secret.Tags);
+                console.log(`tags are ${JSON.stringify(tags)}`);
 
                 resources.push({
                   id: secret.ARN.toString(),
                   tags,
                   tagsHash: hashTagsV1(tags),
                 });
+                console.log(
+                  `nextAction: calling with ${JSON.stringify(resources)}`
+                );
                 const nextTime = nextAction(resources[0]);
 
                 if (secret.ARN && nextTime !== undefined) {
@@ -243,8 +253,6 @@ export async function handler(event: EventParameters): Promise<boolean> {
                     console.log(
                       `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
                     );
-
-
                   } catch (error) {
                     console.log(
                       `Job name ${jobName} is a duplicate. Exiting gracefully.`
