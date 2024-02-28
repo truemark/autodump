@@ -243,12 +243,16 @@ export async function handler(event: EventParameters): Promise<boolean> {
                     console.log(
                       `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
                     );
+
+
                   } catch (error) {
                     console.log(
                       `Job name ${jobName} is a duplicate. Exiting gracefully.`
                     );
                   }
                 }
+                resources.length = 0;
+                action.length = 0;
               }
             }
           } else {
