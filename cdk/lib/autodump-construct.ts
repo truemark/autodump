@@ -43,7 +43,7 @@ import {
 import {
   Rule,
   RuleTargetInput,
-  RuleTargetInputProperties,
+  // RuleTargetInputProperties,
   Schedule,
 } from 'aws-cdk-lib/aws-events';
 import {LambdaFunction} from 'aws-cdk-lib/aws-events-targets';
@@ -347,5 +347,31 @@ export class AutoDump extends Construct {
         }),
       ],
     });
+
+    const secretsManagerTagChangePattern = {
+      // source: ['aws.tags'],
+      // detailType: ['Tag Change On Resource'],
+      detail: {
+        eventSource: ['secretsmanager.amazonaws.com'],
+        eventName: ['TagResource', 'UntagResource'],
+      },
+    };
+
+    const secretsManagerTagChangeRule = new Rule(
+      this,
+      'SecretsManagerTagChangeRule',
+      {
+        eventPattern: secretsManagerTagChangePattern,
+        description:
+          'Routes tag events in Secrets Manager to AutoDump Step Function',
+      }
+    );
+
+    //   Call scanner with a reference to the secret ARN and the state machine ARN.
+    secretsManagerTagChangeRule.addTarget(
+      new LambdaFunction(scannerFunction, {
+        event: RuleTargetInput.fromObject(ruleTargetInputProps),
+      })
+    );
   }
 }
