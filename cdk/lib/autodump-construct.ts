@@ -263,9 +263,17 @@ export class AutoDump extends Construct {
       resultPath: '$.LambdaOutput',
     });
 
+    const rescheduleScanner = new LambdaInvoke(this, 'rescheduleScanner', {
+      stateName: 'Schedule next AutoDump execution',
+      lambdaFunction: scannerFunction,
+      inputPath: '$$.StateMachine.Id',
+      resultPath: '$.LambdaOutput',
+    });
+
     const definition = DefinitionBody.fromChainable(
       addExecutionContext
         .next(wait)
+        // .next(rescheduleScanner)
         .next(getHash)
         .next(
           new Choice(this, 'Do the hashes match?')
@@ -325,12 +333,6 @@ export class AutoDump extends Construct {
       })
     );
 
-    // Fire the scanner lambda daily at midnight UTC.
-    const schedule = Schedule.cron({
-      minute: '53',
-      hour: '14',
-    });
-
     interface AutoDumpRuleTargetInputProperties {
       readonly input: string;
     }
@@ -338,15 +340,6 @@ export class AutoDump extends Construct {
     const ruleTargetInputProps: AutoDumpRuleTargetInputProperties = {
       input: `{"stateMachineArn": "${stateMachine.stateMachineArn}"}`,
     };
-
-    const scheduledRule = new Rule(this, 'ScheduleRule', {
-      schedule,
-      targets: [
-        new LambdaFunction(scannerFunction, {
-          event: RuleTargetInput.fromObject(ruleTargetInputProps),
-        }),
-      ],
-    });
 
     const secretsManagerTagChangePattern = {
       // source: ['aws.tags'],
@@ -373,5 +366,22 @@ export class AutoDump extends Construct {
         event: RuleTargetInput.fromObject(ruleTargetInputProps),
       })
     );
+
+    // Fire the scanner lambda daily at midnight UTC.
+    const schedule = Schedule.cron({
+      minute: '53',
+      hour: '14',
+    });
+
+    // This will show up as unused, because it's scheduled.
+    // @ts-ignore @typescript-eslint/no-unused-vars
+    const scheduledRule = new Rule(this, 'ScheduleRule', {
+      schedule,
+      targets: [
+        new LambdaFunction(scannerFunction, {
+          event: RuleTargetInput.fromObject(ruleTargetInputProps),
+        }),
+      ],
+    });
   }
 }
