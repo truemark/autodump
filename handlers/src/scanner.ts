@@ -61,6 +61,7 @@ function cronAction(
     )}, cronExpression is ${cronExpression}`
   );
   const tz = resource.tags.timezone ?? 'UTC';
+  console.log(`cronAction: timezone is ${tz}`);
   const expression = optionalCron(cronExpression, tz);
   console.log(
     `cronAction: timezone is i${tz}, expression is ${JSON.stringify(
@@ -176,7 +177,7 @@ export async function handler(event: EventParameters): Promise<boolean> {
     stateMachineArn = parsedInput.stateMachineArn;
     console.log(`handler: stateMachineARN is:, ${stateMachineArn}`);
 
-    // 100 is the maximum value for MaxResults.
+    // TODO: add pagination 100 is the maximum value for MaxResults.
     const listSecretsRequest = {
       MaxResults: 100,
     };
