@@ -85,6 +85,9 @@ export class AutoDump extends Construct {
     const scannerFunction = new ScannerFunction(this, 'ScannerFunction', {
       tagName: 'autodump:start-schedule',
     });
+    const rescheduleFunction = new ScannerFunction(this, 'RescheduleFunction', {
+      tagName: 'autodump:start-schedule',
+    });
     const hashFunction = new HashFunction(this, 'HashFunction', {
       secretArn: '',
       initialHash: '',
@@ -263,17 +266,17 @@ export class AutoDump extends Construct {
       resultPath: '$.LambdaOutput',
     });
 
-    const rescheduleScanner = new LambdaInvoke(this, 'rescheduleScanner', {
+    const rescheduleScanner = new LambdaInvoke(this, 'RescheduleScanner', {
       stateName: 'Schedule next AutoDump execution',
-      lambdaFunction: scannerFunction,
-      inputPath: '$$.StateMachine.Id',
+      lambdaFunction: rescheduleFunction,
+      inputPath: '$',
       resultPath: '$.LambdaOutput',
     });
 
     const definition = DefinitionBody.fromChainable(
       addExecutionContext
         .next(wait)
-        // .next(rescheduleScanner)
+        .next(rescheduleScanner)
         .next(getHash)
         .next(
           new Choice(this, 'Do the hashes match?')
