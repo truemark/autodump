@@ -206,7 +206,7 @@ export async function handler(event: Event): Promise<boolean> {
       );
     }
   } catch (error) {
-    console.error('Execution is not from a state machine call.');
+    console.info('Event is not from a state machine call.');
   }
 
   try {
@@ -218,9 +218,10 @@ export async function handler(event: Event): Promise<boolean> {
     }
   } catch (error) {
     // catchall error
-    console.error('Execution is not from an Event Bridge rule.');
+    console.info('Event is not from an Event Bridge rule.');
   }
 
+  // bail out, can't identify the event source
   if (stateMachineArn === undefined) {
     console.error(
       'stateMachineArn is undefined, cannot identify event source. Exiting.'
@@ -231,102 +232,110 @@ export async function handler(event: Event): Promise<boolean> {
   interface listSecretsCommandParameters {
     NextToken?: string;
   }
-
   let nextToken;
-  const params = {};
-  // TODO: add pagination 100 is the maximum value for MaxResults.
-  const listSecretsCommandParameters: listSecretsCommandParameters = {};
-  if (nextToken) {
-    listSecretsCommandParameters.NextToken = nextToken;
-  }
-
-  const command = new ListSecretsCommand(listSecretsCommandParameters);
-  const listSecretsCommandOutput = await client.send(command);
 
   try {
-    if (listSecretsCommandOutput.SecretList) {
-      const resources: AutoDumpResource[] = [];
-      const action: AutoDumpAction[] = [];
-
-      for (const secret of listSecretsCommandOutput.SecretList) {
-        if (typeof secret.Tags !== 'undefined' && secret.Tags.length > 0) {
-          console.log(`secret.Tags is ${JSON.stringify(secret.Tags)}`);
-          for (const tag of secret.Tags) {
-            if (
-              tag.Key === AutoDumpTag.START_SCHEDULE &&
-              tag.Value !== null &&
-              secret.ARN !== undefined
-            ) {
-              // This secret should be scheduled.
-              console.log(
-                `Secret eligible for scheduling: ${secret.Name} tag present: ${tag.Key}, schedule is ${tag.Value}`
-              );
-              const tags = getTags(secret.Tags);
-              console.log(`tags are ${JSON.stringify(tags)}`);
-
-              resources.push({
-                id: secret.ARN.toString(),
-                tags,
-                tagsHash: hashTagsV1(tags),
-              });
-              console.log(
-                `nextAction: calling with ${JSON.stringify(resources)}`
-              );
-              const nextTime = nextAction(resources[0]);
-
-              if (secret.ARN && nextTime !== undefined) {
-                action.push({
-                  resourceId: secret.ARN.toString(),
-                  tagsHash: hashTagsV1(tags),
-                  when: nextTime.when,
-                });
-
-                const executionTime = formatTimestamp(nextTime.when);
-                console.log(
-                  `nextTime: executionTime as a formatted string is ${executionTime}`
-                );
-                const databaseName: string = await getDatabaseName(secret.ARN);
-
-                let jobName = '';
-                if (secret.Name !== undefined && databaseName !== undefined) {
-                  jobName = `${secret.Name.slice(
-                    0,
-                    60
-                  )}-${databaseName}-${executionTime}`.slice(0, 80);
-                }
-
-                console.log(
-                  `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`
-                );
-
-                try {
-                  const startStateMachineResponse = await sfnClient.send(
-                    new StartExecutionCommand({
-                      stateMachineArn: stateMachineArn,
-                      input: JSON.stringify(action[0]),
-                      name: jobName,
-                    })
-                  );
-                  console.log(
-                    `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
-                  );
-                } catch (error) {
-                  console.log(
-                    `Job name ${jobName} is a duplicate. Exiting gracefully.`
-                  );
-                }
-              }
-              resources.length = 0;
-              action.length = 0;
-            }
-          }
-        } else {
-          console.log(
-            `No autodump tags available for this secret --->>> ${secret.Name}.`
-          );
-        }
+    do {
+      const params: listSecretsCommandParameters = {};
+      if (nextToken) {
+        params.NextToken = nextToken;
       }
-    }
+      const command = new ListSecretsCommand(params);
+      const response = await client.send(command);
+
+      if (response.SecretList) {
+        const resources: AutoDumpResource[] = [];
+        const action: AutoDumpAction[] = [];
+        for (const secret of response.SecretList) {
+          if (typeof secret.Tags !== 'undefined' && secret.Tags.length > 0) {
+            // console.log(`secret.Tags is ${JSON.stringify(secret.Tags)}`);
+            for (const tag of secret.Tags) {
+              if (
+                tag.Key === AutoDumpTag.START_SCHEDULE &&
+                tag.Value !== null &&
+                secret.ARN !== undefined
+              ) {
+                // This secret should be scheduled.
+                console.log(
+                  `Secret eligible for scheduling: ${
+                    secret.Name
+                  } tag present: ${JSON.stringify(secret.Tags)}`
+                );
+                const tags = getTags(secret.Tags);
+
+                resources.push({
+                  id: secret.ARN.toString(),
+                  tags,
+                  tagsHash: hashTagsV1(tags),
+                });
+                console.log(
+                  `nextAction: calling with ${JSON.stringify(resources)}`
+                );
+                const nextTime = nextAction(resources[0]);
+
+                if (secret.ARN && nextTime !== undefined) {
+                  action.push({
+                    resourceId: secret.ARN.toString(),
+                    tagsHash: hashTagsV1(tags),
+                    when: nextTime.when,
+                  });
+
+                  const executionTime = formatTimestamp(nextTime.when);
+                  console.log(
+                    `nextTime: executionTime as a formatted string is ${executionTime}`
+                  );
+                  const databaseName: string = await getDatabaseName(
+                    secret.ARN
+                  );
+
+                  let jobName = '';
+                  if (secret.Name !== undefined && databaseName !== undefined) {
+                    // A job name can't have / in the name. Splice out the secret name for use in naming the execution.
+
+                    const secretName: string =
+                      secret.Name.split('/').pop() ?? secret.Name;
+
+                    jobName = `${secretName.slice(
+                      0,
+                      60
+                    )}-${databaseName}-${executionTime}`.slice(0, 80);
+                  }
+
+                  console.log(
+                    `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`
+                  );
+
+                  try {
+                    const startStateMachineResponse = await sfnClient.send(
+                      new StartExecutionCommand({
+                        stateMachineArn: stateMachineArn,
+                        input: JSON.stringify(action[0]),
+                        name: jobName,
+                      })
+                    );
+                    console.log(
+                      `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
+                    );
+                  } catch (error) {
+                    console.log(
+                      `Job name ${jobName} is a duplicate. Exiting gracefully. ${error}`
+                    );
+                  }
+                }
+                resources.length = 0;
+                action.length = 0;
+              }
+            }
+          } else {
+            console.log(
+              `No tags available for this secret --->>> ${secret.Name}.`
+            );
+          }
+        }
+
+        nextToken = response.NextToken;
+      }
+    } while (nextToken);
     return true;
   } catch (error) {
     console.error('Error listing secrets:', error);
