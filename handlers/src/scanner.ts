@@ -195,51 +195,52 @@ export async function handler(event: Event): Promise<boolean> {
   let stateMachineArn = undefined;
 
   // figure out what the source of the event is: scheduled rule or state machine call
+  try {
+    if (event.StateMachine.Id !== undefined) {
+      // from state machine call
+
+      stateMachineArn = event.StateMachine.Id;
+
+      console.log(
+        `Firing a reschedule execution. stateMachineArn ${stateMachineArn}`
+      );
+    }
+  } catch (error) {
+    console.error('Execution is not from a state machine call.');
+  }
 
   try {
-    // from state machine call
-
-    stateMachineArn = event.StateMachine.Id;
-
-    console.log(
-      `Firing a reschedule execution. stateMachineArn ${stateMachineArn}`
-    );
-  } catch (error) {
-    console.error(`Event is not a state machine event. ${error}`);
-  }
-
-  if (stateMachineArn === undefined) {
-    console.log('stateMachineArn is undefined. Check for event bridge rule.');
-
-    try {
+    if (JSON.parse(event.input).stateMachineArn !== undefined) {
       // From Event Bridge rule: Parsing the 'input' field to get the State Machine ARN
-      console.log(`Event Bridge call: stateMachineArn is ${event.input}`);
+      stateMachineArn = JSON.parse(event.input).stateMachineArn;
 
-      // Parsing the 'input' field to get the State Machine ARN
-      const input = event.input;
-      const parsedInput: EventSourceParameters = JSON.parse(input);
-
-      stateMachineArn = parsedInput.stateMachineArn;
       console.log(`Event Bridge call: stateMachineArn is ${stateMachineArn}`);
-    } catch (error) {
-      console.error(
-        `handler: Event is not from a scheduled rule. ${error} ${event}`
-      );
-      return false;
     }
+  } catch (error) {
+    // catchall error
+    console.error('Execution is not from an Event Bridge rule.');
   }
 
   if (stateMachineArn === undefined) {
-    console.error('stateMachineArn is undefined. Exiting.');
+    console.error(
+      'stateMachineArn is undefined, cannot identify event source. Exiting.'
+    );
     return false;
   }
 
-  // TODO: add pagination 100 is the maximum value for MaxResults.
-  const listSecretsRequest = {
-    MaxResults: 100,
-  };
+  interface listSecretsCommandParameters {
+    NextToken?: string;
+  }
 
-  const command = new ListSecretsCommand(listSecretsRequest);
+  let nextToken;
+  const params = {};
+  // TODO: add pagination 100 is the maximum value for MaxResults.
+  const listSecretsCommandParameters: listSecretsCommandParameters = {};
+  if (nextToken) {
+    listSecretsCommandParameters.NextToken = nextToken;
+  }
+
+  const command = new ListSecretsCommand(listSecretsCommandParameters);
   const listSecretsCommandOutput = await client.send(command);
 
   try {
@@ -321,7 +322,7 @@ export async function handler(event: Event): Promise<boolean> {
           }
         } else {
           console.log(
-            `No tags available for this secret --->>> ${secret.Name}.`
+            `No autodump tags available for this secret --->>> ${secret.Name}.`
           );
         }
       }
