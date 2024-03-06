@@ -18,7 +18,7 @@ Step 5. The state machine is triggered to start. It first enters a wait state un
 
 Step 6. After the wait state expires, the Reschedule Lambda and Hash Lambda fire in parallel. The Reschedule Lambda calculates the next execution time, and the Hash Lambda determines if the tags have changed since the task was scheduled. If both Lambdas return success, Batch is fired.  
 
-Step 7. Tthe state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR. The Secret ARN is passed in to the job as an environment variable, and the secret is only read within the Fargate job.
+Step 7. The state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR. The Secret ARN is passed in to the job as an environment variable, and the secret is only read within the Fargate job.
 
 Step 8. The AWS Batch job runs the dump command, which intially stores the dumpfile locally, and then copies it to S3.
 
