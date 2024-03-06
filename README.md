@@ -16,7 +16,7 @@ Step 4. For each identified secret, the Scanner Lambda determines the appropriat
 
 Step 5. The state machine is triggered to start. It first enters a wait state until the scheduled time as calculated in Step 2. 
 
-Step 6. After the wait state expires, the Reschedule Lambda and Hash Lambda fire in parallel. The Reschedule Lambda calculates the next execution time, and the Hash Lambda determines if the tags have changed since the task was scheduled. If both Lamnbdas return success, Batch is fired.  
+Step 6. After the wait state expires, the Reschedule Lambda and Hash Lambda fire in parallel. The Reschedule Lambda calculates the next execution time, and the Hash Lambda determines if the tags have changed since the task was scheduled. If both Lambdas return success, Batch is fired.  
 
 Step 7. Tthe state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR. The Secret ARN is passed in to the job as an environment variable, and the secret is only read within the Fargate job.
 
