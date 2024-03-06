@@ -1,24 +1,28 @@
 # AutoDump
 
-This cdk project automates creation of services that dump a database to S3.
+This cdk project automates creation of services that dump a database to S3. It scans all secrets within an account looking for secrets that have autodump tags. If any are present, a state machine execution is scheduled that will dump the database referenced in the secret to S3.
 
 ## How this works
-AutoDump scans all secrets within an account, and looks for secrets that have autodump tags. If it finds any, it will fire a state machine execution that will dump the database to S3.
 
-![img/img3.png](img/img3.png)
-Step 1. The Scanner Lambda is scheduled to run daily at midnight UTC. It initiates the process by scanning all secrets within the account. It identifies which secrets are tagged for AutoDump scheduling.
 
-Step 2. For each identified secret, the Lambda determines the appropriate schedule time and calculates the tag hash. This information is used to configure the execution parameters when firing the state machine execution in the next step.
+![](img/20240306064751.png)
+Step 1. The process begins when a secret is created with the appropriate tags, or a secret is updated to include the tags (the tag schema is [here](#supported-tags)). 
 
-Step 3. The state machine is triggered to start. It first enters a wait state until the scheduled time as calculated in Step 2. 
+Step 2. An EventBridge rule is triggered by the secret creation or update. The rule triggers the Scanner Lambda.
 
-Step 4. After the wait state expires, the state machine fires the Hash Lambda to calculate the current tag hash value. 
+Step 3. The Scanner Lambda scans all secrets within the account. It identifies which secrets are tagged for AutoDump scheduling.
 
-Step 5. If the tag hash value is the same as the one calculated in Step 1, the state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR.
+Step 4. For each identified secret, the Scanner Lambda determines the appropriate schedule time and calculates the tag hash. This information is used to configure the execution parameters when firing the state machine execution in Step 6.
 
-Step 6. The AWS Batch job runs the dump command, which intially stores the dumpfile locally, and then copies it to S3.
+Step 5. The state machine is triggered to start. It first enters a wait state until the scheduled time as calculated in Step 2. 
 
-Step 7. The state machine evalutes the exit status of the AWS Batch job. 
+Step 6. After the wait state expires, the Reschedule Lambda and Hash Lambda fire in parallel. The Reschedule Lambda calculates the next execution time, and the Hash Lambda determines if the tags have changed since the task was scheduled. If both Lamnbdas return success, Batch is fired.  
+
+Step 7. Tthe state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR. The Secret ARN is passed in to the job as an environment variable, and the secret is only read within the Fargate job.
+
+Step 8. The AWS Batch job runs the dump command, which intially stores the dumpfile locally, and then copies it to S3.
+
+Step 9. The state machine evalutes the exit status of the AWS Batch job. 
 
 ## Creating an AutoDump secret
 
@@ -43,6 +47,13 @@ Below is a screen shot of a sample AutoDump secret value.
 |-------------------------|--------------------------------------------------------------------------------------------------------------------|
 | autodump:timezone       | The timezone to use when interpreting schedules. Defaults to UTC. Example: America/Denver                          |
 | autodump:start-schedule | The schedule as a cron expression to start the resource. Example: 0 8 * * 1-5      
+
+## Limitations
+The cron cannot schedule a job to run every minute. This is because the cron logic bumps the time ahead one minute within the optionalCron function within the scanner function code (see code below). This is not a problem considering a database dump is not something that would be useful if executed every minute. 
+
+```
+      currentDate: new Date(Date.now() + 60000), // look 1 minute in the future to be safe
+```
 
 ## Useful commands
 
