@@ -4,25 +4,26 @@ This cdk project automates creation of services that dump a database to S3. It s
 
 ## How this works
 
+![img.png](img/img.png)
 
-![](img/20240306064751.png)
-Step 1. The process begins when a secret is created with the appropriate tags, or a secret is updated to include the tags (the tag schema is [here](#supported-tags)). 
 
-Step 2. An EventBridge rule is triggered by the secret creation or update. The rule triggers the Scanner Lambda.
+Step 1. The process begins when a secret is created with the appropriate tags, or a secret is updated to include the tags (the tag schema is [here](#supported-tags)). These actions emit events on the default event bus.
+
+Step 2. An EventBridge rule is triggered by the secret creation or update secret tag events. This rule triggers the Scanner Lambda.
 
 Step 3. The Scanner Lambda scans all secrets within the account. It identifies which secrets are tagged for AutoDump scheduling.
 
-Step 4. For each identified secret, the Scanner Lambda determines the appropriate schedule time and calculates the tag hash. This information is used to configure the execution parameters when firing the state machine execution in Step 6.
+Step 4. For each identified AutoDump secret, the Scanner Lambda determines the appropriate schedule time and calculates the tag hash. This information is used to configure the execution parameters during state machine execution in Step 6.
 
-Step 5. The state machine is triggered to start. It first enters a wait state until the scheduled time as calculated in Step 2. 
+Step 5. The state machine is triggered to start. It first enters a wait state until the scheduled time as calculated in Step 4. 
 
-Step 6. After the wait state expires, the Reschedule Lambda and Hash Lambda fire in parallel. The Reschedule Lambda calculates the next execution time, and the Hash Lambda determines if the tags have changed since the task was scheduled. If both Lambdas return success, Batch is fired.  
+Step 6. After the wait state expires, the Hash Lambda determines if the tags have changed since the task was scheduled. If the tags have not changed, execution continues. Otherwise, execution terminates gracefully.
 
-Step 7. The state machine fires the AWS Batch job using AWS Fargate and an [image](https://github.com/truemark/autodump-docker) we created for this purpose. It is stored in ECR. The Secret ARN is passed in to the job as an environment variable, and the secret is only read within the Fargate job.
+Step 7. The Reschedule Lambda and Batch job fire in parallel. The Reschedule Lambda calculates the next execution time and schedules the next state machine execution. The state machine fires the Batch job using Fargate and a [docker image](https://github.com/truemark/autodump-docker) created for this purpose. The docker image is stored in ECR. The Secret ARN is passed in to the job as an environment variable, and the secret is only accessed within the Fargate job.
 
-Step 8. The AWS Batch job runs the dump command, which intially stores the dumpfile locally, and then copies it to S3.
+Step 8. The Fargate job runs the dump command, which initially stores the dumpfile locally, and then copies it to S3.
 
-Step 9. The state machine evalutes the exit status of the AWS Batch job. 
+Step 9. The state machine evaluates the exit status of the Batch job and the Reschedule Lambda. If either fail, the state machine will report failure. If both succeed, the state machine will report success. 
 
 ## Creating an AutoDump secret
 
@@ -39,8 +40,7 @@ The secret value must have the values listed below.
 
 Below is a screen shot of a sample AutoDump secret value.
 
-![img/img.png](img/img.png)
-
+![img.png](img/img2.png)
 ## Supported Tags
 
 | Tag                     | Description                                                                                                        |
