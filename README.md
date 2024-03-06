@@ -28,14 +28,14 @@ Step 9. The state machine evalutes the exit status of the AWS Batch job.
 
 The secret value must have the values listed below.
 
-| col1 | col2                                                                                                                                                                                                                                                  | 
-|--|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| username | The username of the database account that will execute the dump. This user must have the appropriate privileges granted within the database engine. This user can be named 'autodump', however the only limitations are those of the database engine. |
-| password | The password of the database account. Limitations of database engine apply here also.                                                                                                                                                                 |
+| tag          | description                                                                                                                                                                                                                                           | 
+|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| username     | The username of the database account that will execute the dump. This user must have the appropriate privileges granted within the database engine. This user can be named 'autodump', however the only limitations are those of the database engine. |
+| password     | The password of the database account. Limitations of database engine apply here also.                                                                                                                                                                 |
 | databasename | The name of the database to export. The database must exist on the database server referenced in endpoint.                                                                                                                                            |
-| endpoint | The RDS endpoint where the database resides.                                                                                                                                                                                                          |
-| engine | The database engine. Currently only postgres is supported.                                                                                                                                                                                            |
-| bucketname | The name of the bucket where dump files are stored.                                                                                                                                                                                                   |
+| endpoint     | The RDS endpoint where the database resides.                                                                                                                                                                                                          |
+| engine       | The database engine. Currently only postgres is supported.                                                                                                                                                                                            |
+| bucketname   | The name of the bucket where dump files are stored.                                                                                                                                                                                                   |
 
 Below is a screen shot of a sample AutoDump secret value.
 

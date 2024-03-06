@@ -16,6 +16,7 @@ import {
   Fail,
   JsonPath,
   LogLevel,
+  Parallel,
   Pass,
   StateMachine,
   Succeed,
@@ -266,17 +267,13 @@ export class AutoDump extends Construct {
       resultPath: '$.LambdaOutput',
     });
 
-    const rescheduleScanner = new LambdaInvoke(this, 'RescheduleScanner', {
-      stateName: 'Schedule next AutoDump execution',
+    const rescheduleFunctionTask = new LambdaInvoke(this, 'Reschedule', {
       lambdaFunction: rescheduleFunction,
-      inputPath: '$',
-      resultPath: '$.LambdaOutput',
+      // other LambdaInvoke properties
     });
-
     const definition = DefinitionBody.fromChainable(
       addExecutionContext
         .next(wait)
-        .next(rescheduleScanner)
         .next(getHash)
         .next(
           new Choice(this, 'Do the hashes match?')
@@ -286,25 +283,28 @@ export class AutoDump extends Construct {
             )
             .when(
               Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
-              new BatchSubmitJob(
-                this,
-                'Fire batch job',
-                batchSubmitJobProps
-              ).next(
-                new Choice(this, 'Did job complete successfully?')
-                  .when(
-                    Condition.stringEquals('$.Status', 'SUCCEEDED'),
-                    jobSuccess
+              new Parallel(this, 'Run Lambdas in parallel')
+                .branch(rescheduleFunctionTask)
+                .branch(
+                  new BatchSubmitJob(
+                    this,
+                    'Fire Batch job',
+                    batchSubmitJobProps
                   )
-                  .otherwise(jobFailed)
-              )
+                )
+                .next(
+                  new Choice(this, 'Did both Lambdas complete successfully?')
+                    .when(
+                      Condition.and(
+                        Condition.numberEquals('$[0].StatusCode', 200),
+                        Condition.stringEquals('$[1].Status', 'SUCCEEDED')
+                      ),
+                      jobSuccess
+                    )
+                    .otherwise(jobFailed)
+                )
             )
         )
-      // TODO Where do we schedule the next run? The idea is that there is always a state machine execution running for a secret when it's tagged. When the execution is done, another is started. This is also how autostate works.
-      // TODO Continued: So, if I had 2 secrets tagged for autodump. I should be able to look at the state machine and see two executions, one for each database in a waiting state for their time to run.
-      // TODO FIXED: Each execution starts with the event bridge rule firing the scanner lambda.
-      // TODO I do not see any event bridge rules listening for tag changes to schedule these dump runs.
-      // TODO FIXED: Correct. All executions start from the scanner lambda. We discussed leaving listening to tag change events for a future iteration.I will gladly add it if need be.
     );
 
     const stateMachine = new StateMachine(this, 'Default', {
@@ -345,11 +345,9 @@ export class AutoDump extends Construct {
     };
 
     const secretsManagerTagChangePattern = {
-      // source: ['aws.tags'],
-      // detailType: ['Tag Change On Resource'],
       detail: {
         eventSource: ['secretsmanager.amazonaws.com'],
-        eventName: ['TagResource', 'UntagResource'],
+        eventName: ['TagResource', 'UntagResource', 'CreateSecret'],
       },
     };
 

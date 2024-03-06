@@ -326,11 +326,12 @@ export async function handler(event: Event): Promise<boolean> {
                 action.length = 0;
               }
             }
-          } else {
-            console.log(
-              `No tags available for this secret --->>> ${secret.Name}.`
-            );
           }
+          // else {
+          //   console.log(
+          //     `No tags available for this secret --->>> ${secret.Name}.`
+          //   );
+          // }
         }
 
         nextToken = response.NextToken;
