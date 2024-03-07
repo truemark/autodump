@@ -4,7 +4,7 @@ This cdk project automates creation of services that dump a database to S3. It s
 
 ## How this works
 
-![img.png](img/img.png)
+![img.png](img/dfd.png)
 
 
 Step 1. The process begins when a secret is created with the appropriate tags, or a secret is updated to include the tags (the tag schema is [here](#supported-tags)). These actions emit events on the default event bus.
@@ -39,8 +39,7 @@ The secret value must have the values listed below.
 | bucketname   | The name of the bucket where dump files are stored.                                                                                                                                                                                                   |
 
 Below is a screen shot of a sample AutoDump secret value.
-
-![img.png](img/img2.png)
+![img.png](img/secret.png)
 ## Supported Tags
 
 | Tag                     | Description                                                                                                        |
