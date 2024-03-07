@@ -1,0 +1,5 @@
+{
+  "vpcId": "vpc-0dac458b5d1542764",
+  "privateSubnetIds": ["subnet-00cd7a0602e4f0f09", "subnet-08e5109899e63da57", "subnet-042e37e02217a69d3"],
+  "availabilityZones": ["us-west-2a", "us-west-2b", "us-west-2c"]
+}
