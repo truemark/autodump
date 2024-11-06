@@ -5,15 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e9509d47-756c-400a-91c7-b619903aee33" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.github/dependabot.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.github/workflows/issues.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.github/workflows/publish.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/lib/autodump-stack.ts" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/lib/autodump-stack.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -98,7 +89,7 @@
       <workItem from="1728512431180" duration="4000" />
       <workItem from="1730904603959" duration="498000" />
       <workItem from="1730905823180" duration="323000" />
-      <workItem from="1730906523623" duration="7571000" />
+      <workItem from="1730906523623" duration="7617000" />
     </task>
     <servers />
   </component>
