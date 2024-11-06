@@ -6,6 +6,7 @@ import {
   PolicyStatement,
   Role,
   ServicePrincipal,
+  User,
 } from 'aws-cdk-lib/aws-iam';
 import {AwsLogDriver, ContainerImage} from 'aws-cdk-lib/aws-ecs';
 import {Duration} from 'aws-cdk-lib/core';
@@ -34,8 +35,8 @@ import {
   FargateComputeEnvironmentProps,
   JobQueue,
 } from 'aws-cdk-lib/aws-batch';
-import {Size} from 'aws-cdk-lib';
-import {BlockPublicAccess, Bucket, BucketEncryption} from 'aws-cdk-lib/aws-s3';
+import {RemovalPolicy, Size} from 'aws-cdk-lib';
+import {BlockPublicAccess, Bucket, BucketEncryption, ObjectOwnership} from 'aws-cdk-lib/aws-s3';
 import {
   BatchSubmitJob,
   BatchSubmitJobProps,
@@ -49,18 +50,41 @@ import {
 } from 'aws-cdk-lib/aws-events';
 import {LambdaFunction} from 'aws-cdk-lib/aws-events-targets';
 
+/**
+ * Properties for the AutoDump construct.
+ */
 export interface AutoDumpProps {
-  readonly tagPrefix?: string;
+  readonly tagPrefix?: string; // TODO This appears to be unused
+  /**
+   * The VPC ID to run AutoDump in.
+   */
   readonly vpcId: string;
+  /**
+   * The private subnets to run AutoDump in.
+   */
   readonly privateSubnetIds: string[];
+  /**
+   * The availability zones to run AutoDump in.
+   */
   readonly availabilityZones: string[];
+  /**
+   * The bucket name to use. If one is not provided, a generated name is used.
+   */
+  readonly bucketName?: string;
+  /**
+   * Set to true to create a read-only IAM user. Default is false. No secret key is generated.
+   */
+  readonly createReadOnlyUser?: boolean;
 }
 
+/**
+ * Primary construct for AutoDump.
+ */
 export class AutoDump extends Construct {
   constructor(scope: Construct, id: string, props: AutoDumpProps) {
     super(scope, id);
 
-    const stackName = 'autodump';
+    const stackName = 'autodump'; // TODO Not sure why this is harcoded
 
     const vpc = Vpc.fromVpcAttributes(this, 'Vpc', {
       vpcId: props.vpcId,
@@ -141,17 +165,40 @@ export class AutoDump extends Construct {
     );
 
     const autoDumpBucket = new Bucket(this, 'Archive', {
+      // Do not allow public access
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      encryption: BucketEncryption.S3_MANAGED,
+
+      // Disables ACLs on the bucket and policies are used to define access
+      objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
+
+      // Encrypt using S3 keys
+      encryption: BucketEncryption.S3_MANAGED, // TODO We should support the use of KMS keys for encryption
+
+      // Force the use of SSL
       enforceSSL: true,
+
+      // Do not setup versioning
       versioned: false,
+
+      // Allow the bucket to be removed or objects to be automatically purged based on pass parameter
+      bucketName: props.bucketName,
+
+      // The bucket should be retained in the event of stack deletion
+      removalPolicy: RemovalPolicy.RETAIN,
+
+      // Delete old dump files
       lifecycleRules: [
         {
-          expiration: Duration.days(7),
+          expiration: Duration.days(7), // TODO Should be configurable as an input parameter
           enabled: true,
         },
       ],
     });
+
+    if (props.createReadOnlyUser) {
+      const user = new User(this, 'ReadOnlyUser');
+      autoDumpBucket.grantRead(user);
+    }
 
     const addExecutionContext = new Pass(this, 'Add Execution Context', {
       parameters: {

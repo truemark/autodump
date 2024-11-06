@@ -40,6 +40,7 @@ The secret value must have the values listed below.
 
 Below is a screen shot of a sample AutoDump secret value.
 ![img.png](img/secret.png)
+
 ## Supported Tags
 
 | Tag                     | Description                                                                                                        |

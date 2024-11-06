@@ -10,4 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 -   Added automation tags to resources
+-   Added support for specifying the bucket name
+-   Added support for creating a read-only IAM user
+
+### Removed
+
+-   Removed the need to pass account and region as context parameters
  
