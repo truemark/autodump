@@ -18,7 +18,7 @@ export class ScannerFunction extends NodejsFunction {
       memorySize: 512,
       timeout: Duration.seconds(900), // TODO This seems short for accounts that may have many secrets.
       logRetention: RetentionDays.ONE_MONTH,
-      entry: path.join(__dirname, '..', '..', 'handlers', 'src', 'scanner.ts'),
+      entry: path.join(__dirname, '..', '..', 'handlers', 'src', 'scanner.mts'),
       handler: 'handler',
       environment: {
         TAG_NAME: props.tagName,
@@ -29,7 +29,7 @@ export class ScannerFunction extends NodejsFunction {
       new PolicyStatement({
         actions: ['states:StartExecution'],
         resources: ['*'],
-      })
+      }),
     );
 
     this.addToRolePolicy(
@@ -42,7 +42,7 @@ export class ScannerFunction extends NodejsFunction {
         ],
         // TODO: Narrow  down to autodump secrets, by tag or prefix, and the KMS key used to encrypt them.
         resources: ['*'],
-      })
+      }),
     );
   }
 }

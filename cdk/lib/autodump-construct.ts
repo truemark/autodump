@@ -36,7 +36,12 @@ import {
   JobQueue,
 } from 'aws-cdk-lib/aws-batch';
 import {RemovalPolicy, Size} from 'aws-cdk-lib';
-import {BlockPublicAccess, Bucket, BucketEncryption, ObjectOwnership} from 'aws-cdk-lib/aws-s3';
+import {
+  BlockPublicAccess,
+  Bucket,
+  BucketEncryption,
+  ObjectOwnership,
+} from 'aws-cdk-lib/aws-s3';
 import {
   BatchSubmitJob,
   BatchSubmitJobProps,
@@ -94,8 +99,8 @@ export class AutoDump extends Construct {
 
     // TODO You cannot assume this, you must pass in one or more subnetIds as part of the AutoDumpProps class. : fixed
     const specificSubnets: SubnetSelection = {
-      subnets: props.privateSubnetIds.map(id =>
-        Subnet.fromSubnetId(this, `Subnet${id}`, id)
+      subnets: props.privateSubnetIds.map((id) =>
+        Subnet.fromSubnetId(this, `Subnet${id}`, id),
       ),
     };
 
@@ -122,7 +127,7 @@ export class AutoDump extends Construct {
       new FargateComputeEnvironment(
         this,
         'FargateComputeEnvironment',
-        fargateComputeEnvironmentProps
+        fargateComputeEnvironmentProps,
       );
 
     // Create the stack service role, allow batch, step functions and ecs as principals, attach required managed policies.
@@ -131,14 +136,14 @@ export class AutoDump extends Construct {
         new ServicePrincipal('batch.amazonaws.com'),
         new ServicePrincipal('ecs.amazonaws.com'),
         new ServicePrincipal('ecs-tasks.amazonaws.com'),
-        new ServicePrincipal('states.amazonaws.com')
+        new ServicePrincipal('states.amazonaws.com'),
       ),
       managedPolicies: [
         ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AWSBatchServiceRole'
+          'service-role/AWSBatchServiceRole',
         ),
         ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AmazonECSTaskExecutionRolePolicy'
+          'service-role/AmazonECSTaskExecutionRolePolicy',
         ),
       ],
     });
@@ -153,7 +158,7 @@ export class AutoDump extends Construct {
         effect: Effect.ALLOW,
         conditions: {StringEquals: tagCondition},
         resources: ['*'],
-      })
+      }),
     );
 
     batchServiceRole.addToPolicy(
@@ -161,7 +166,7 @@ export class AutoDump extends Construct {
         actions: ['secretsmanager:GetSecretValue'],
         effect: Effect.ALLOW,
         resources: ['*'],
-      })
+      }),
     );
 
     const autoDumpBucket = new Bucket(this, 'Archive', {
@@ -205,9 +210,9 @@ export class AutoDump extends Construct {
         'Execution.$': '$$.Execution',
         'State.$': '$$.State',
         'StateMachine.$': '$$.StateMachine',
-        SecretArn: JsonPath.stringAt('$.resourceId'),
-        TagsHash: JsonPath.stringAt('$.tagsHash'),
-        When: JsonPath.stringAt('$.when'),
+        'SecretArn': JsonPath.stringAt('$.resourceId'),
+        'TagsHash': JsonPath.stringAt('$.tagsHash'),
+        'When': JsonPath.stringAt('$.when'),
       },
     });
 
@@ -242,11 +247,11 @@ export class AutoDump extends Construct {
       assumedBy: new CompositePrincipal(
         new ServicePrincipal('batch.amazonaws.com'),
         new ServicePrincipal('ecs-tasks.amazonaws.com'),
-        new ServicePrincipal('states.amazonaws.com')
+        new ServicePrincipal('states.amazonaws.com'),
       ),
       managedPolicies: [
         ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AmazonECSTaskExecutionRolePolicy'
+          'service-role/AmazonECSTaskExecutionRolePolicy',
         ),
       ],
     });
@@ -256,7 +261,7 @@ export class AutoDump extends Construct {
         actions: ['secretsmanager:GetSecretValue'],
         effect: Effect.ALLOW,
         resources: ['*'],
-      })
+      }),
     );
 
     jobRole.addToPolicy(
@@ -264,7 +269,7 @@ export class AutoDump extends Construct {
         actions: ['s3:PutObject'],
         effect: Effect.ALLOW,
         resources: [autoDumpBucket.bucketArn, autoDumpBucket.bucketArn + '/*'],
-      })
+      }),
     );
 
     jobRole.addToPolicy(
@@ -272,7 +277,7 @@ export class AutoDump extends Construct {
         actions: ['kms:Decrypt'],
         effect: Effect.ALLOW,
         resources: ['*'],
-      })
+      }),
     );
 
     // Create an ECS Job Definition but define the container as Fargate. Per AWS Support,
@@ -283,7 +288,7 @@ export class AutoDump extends Construct {
         'FargateAutoDumpDefinition',
         {
           image: ContainerImage.fromRegistry(
-            'public.ecr.aws/truemark/autodump:latest'
+            'public.ecr.aws/truemark/autodump:latest',
           ),
           memory: Size.gibibytes(2),
           cpu: 1,
@@ -292,7 +297,7 @@ export class AutoDump extends Construct {
 
           command: ['/usr/local/bin/dumpdb.sh'],
           jobRole: jobRole,
-        }
+        },
       ),
     });
 
@@ -326,7 +331,7 @@ export class AutoDump extends Construct {
           new Choice(this, 'Do the hashes match?')
             .when(
               Condition.booleanEquals('$.LambdaOutput.Payload.execute', false),
-              jobSuccess // TODO The job shouldn' fail just because the hashes match. A failure implies an error and this is not an error condition. The idea is that if someone changes the schedule by updating the tag the hash won't match so we just silently exit this run and let the new schedule play out which should be a separate state machine execution. :fixed
+              jobSuccess, // TODO The job shouldn' fail just because the hashes match. A failure implies an error and this is not an error condition. The idea is that if someone changes the schedule by updating the tag the hash won't match so we just silently exit this run and let the new schedule play out which should be a separate state machine execution. :fixed
             )
             .when(
               Condition.booleanEquals('$.LambdaOutput.Payload.execute', true),
@@ -336,22 +341,22 @@ export class AutoDump extends Construct {
                   new BatchSubmitJob(
                     this,
                     'Fire Batch job',
-                    batchSubmitJobProps
-                  )
+                    batchSubmitJobProps,
+                  ),
                 )
                 .next(
                   new Choice(this, 'Did both Lambdas complete successfully?')
                     .when(
                       Condition.and(
                         Condition.numberEquals('$[0].StatusCode', 200),
-                        Condition.stringEquals('$[1].Status', 'SUCCEEDED')
+                        Condition.stringEquals('$[1].Status', 'SUCCEEDED'),
                       ),
-                      jobSuccess
+                      jobSuccess,
                     )
-                    .otherwise(jobFailed)
-                )
-            )
-        )
+                    .otherwise(jobFailed),
+                ),
+            ),
+        ),
     );
 
     const stateMachine = new StateMachine(this, 'Default', {
@@ -372,7 +377,7 @@ export class AutoDump extends Construct {
         actions: ['batch:*'],
         effect: Effect.ALLOW,
         resources: ['*'],
-      })
+      }),
     );
 
     batchServiceRole.addToPolicy(
@@ -380,7 +385,7 @@ export class AutoDump extends Construct {
         actions: ['s3:PutObject'],
         effect: Effect.ALLOW,
         resources: [autoDumpBucket.bucketArn],
-      })
+      }),
     );
 
     interface AutoDumpRuleTargetInputProperties {
@@ -405,14 +410,14 @@ export class AutoDump extends Construct {
         eventPattern: secretsManagerTagChangePattern,
         description:
           'Routes tag events in Secrets Manager to AutoDump Step Function',
-      }
+      },
     );
 
     //   Call scanner with a reference to the secret ARN and the state machine ARN.
     secretsManagerTagChangeRule.addTarget(
       new LambdaFunction(scannerFunction, {
         event: RuleTargetInput.fromObject(ruleTargetInputProps),
-      })
+      }),
     );
 
     // Fire the scanner lambda daily at midnight UTC.
@@ -422,8 +427,7 @@ export class AutoDump extends Construct {
     });
 
     // This will show up as unused, because it's scheduled.
-    // @ts-ignore @typescript-eslint/no-unused-vars
-    const scheduledRule = new Rule(this, 'ScheduleRule', {
+    new Rule(this, 'ScheduleRule', {
       schedule,
       targets: [
         new LambdaFunction(scannerFunction, {

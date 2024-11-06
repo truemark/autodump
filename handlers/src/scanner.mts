@@ -8,7 +8,12 @@ import {
 import * as cron from 'cron-parser';
 import {CronExpression} from 'cron-parser/types';
 import {SFNClient, StartExecutionCommand} from '@aws-sdk/client-sfn';
-import {AutoDumpTag, AutoDumpTags, getTags, hashTagsV1} from './hash-helper';
+import {
+  AutoDumpTag,
+  AutoDumpTags,
+  getTags,
+  hashTagsV1,
+} from './hash-helper.mjs';
 
 interface AutoDumpAction {
   readonly resourceId: string;
@@ -28,18 +33,18 @@ const sfnClient = new SFNClient({});
 
 function optionalCron(
   value: string | undefined,
-  tz: string
+  tz: string,
 ): CronExpression | undefined {
   if (value) {
     const parts = value.split(/\s+/);
     if (parts.length !== 5) {
       throw new Error(
-        `Invalid cron expression: ${value}. Expecting 5 fields and received ${parts.length}}`
+        `Invalid cron expression: ${value}. Expecting 5 fields and received ${parts.length}}`,
       );
     }
     if (parts[0].trim() === '*' || parts[0].trim() === '-') {
       throw new Error(
-        'Invalid cron expression. The use * or - in the minute field is not allowed.'
+        'Invalid cron expression. The use * or - in the minute field is not allowed.',
       );
     }
     const cleaned = value.trim().replaceAll(' -', ' *').replaceAll(':', ',');
@@ -53,20 +58,20 @@ function optionalCron(
 
 function cronAction(
   resource: AutoDumpResource,
-  cronExpression: string
+  cronExpression: string,
 ): AutoDumpAction | undefined {
   console.log(
     `cronAction: resource is ${JSON.stringify(
-      resource
-    )}, cronExpression is ${cronExpression}`
+      resource,
+    )}, cronExpression is ${cronExpression}`,
   );
   const tz = resource.tags.timezone ?? 'UTC';
   console.log(`cronAction: timezone is ${tz}`);
   const expression = optionalCron(cronExpression, tz);
   console.log(
     `cronAction: timezone is i${tz}, expression is ${JSON.stringify(
-      expression
-    )}, resource is ${JSON.stringify(resource)}`
+      expression,
+    )}, resource is ${JSON.stringify(resource)}`,
   );
   if (expression && expression.hasNext()) {
     return {
@@ -86,7 +91,7 @@ function cronActions(resource: AutoDumpResource): AutoDumpAction[] {
 
     if (start) {
       console.log(
-        `cronActions: dump database from ${start.resourceId} at ${start.when}`
+        `cronActions: dump database from ${start.resourceId} at ${start.when}`,
       );
       actions.push(start);
     }
@@ -202,7 +207,7 @@ export async function handler(event: Event): Promise<boolean> {
       stateMachineArn = event.StateMachine.Id;
 
       console.log(
-        `Firing a reschedule execution. stateMachineArn ${stateMachineArn}`
+        `Firing a reschedule execution. stateMachineArn ${stateMachineArn}`,
       );
     }
   } catch (error) {
@@ -224,7 +229,7 @@ export async function handler(event: Event): Promise<boolean> {
   // bail out, can't identify the event source
   if (stateMachineArn === undefined) {
     console.error(
-      'stateMachineArn is undefined, cannot identify event source. Exiting.'
+      'stateMachineArn is undefined, cannot identify event source. Exiting.',
     );
     return false;
   }
@@ -259,7 +264,7 @@ export async function handler(event: Event): Promise<boolean> {
                 console.log(
                   `Secret eligible for scheduling: ${
                     secret.Name
-                  } tag present: ${JSON.stringify(secret.Tags)}`
+                  } tag present: ${JSON.stringify(secret.Tags)}`,
                 );
                 const tags = getTags(secret.Tags);
 
@@ -269,7 +274,7 @@ export async function handler(event: Event): Promise<boolean> {
                   tagsHash: hashTagsV1(tags),
                 });
                 console.log(
-                  `nextAction: calling with ${JSON.stringify(resources)}`
+                  `nextAction: calling with ${JSON.stringify(resources)}`,
                 );
                 const nextTime = nextAction(resources[0]);
 
@@ -282,10 +287,10 @@ export async function handler(event: Event): Promise<boolean> {
 
                   const executionTime = formatTimestamp(nextTime.when);
                   console.log(
-                    `nextTime: executionTime as a formatted string is ${executionTime}`
+                    `nextTime: executionTime as a formatted string is ${executionTime}`,
                   );
                   const databaseName: string = await getDatabaseName(
-                    secret.ARN
+                    secret.ARN,
                   );
 
                   let jobName = '';
@@ -297,12 +302,12 @@ export async function handler(event: Event): Promise<boolean> {
 
                     jobName = `${secretName.slice(
                       0,
-                      60
+                      60,
                     )}-${databaseName}-${executionTime}`.slice(0, 80);
                   }
 
                   console.log(
-                    `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`
+                    `starting state machine execution: nextTime is ${nextTime.when}  ${stateMachineArn} ${action[0].resourceId}`,
                   );
 
                   try {
@@ -311,14 +316,14 @@ export async function handler(event: Event): Promise<boolean> {
                         stateMachineArn: stateMachineArn,
                         input: JSON.stringify(action[0]),
                         name: jobName,
-                      })
+                      }),
                     );
                     console.log(
-                      `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`
+                      `start state machine response is ${startStateMachineResponse.executionArn}, ${startStateMachineResponse.startDate}, ${startStateMachineResponse.$metadata.httpStatusCode}`,
                     );
                   } catch (error) {
                     console.log(
-                      `Job name ${jobName} is a duplicate. Exiting gracefully. ${error}`
+                      `Job name ${jobName} is a duplicate. Exiting gracefully. ${error}`,
                     );
                   }
                 }

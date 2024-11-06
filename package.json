@@ -1,5 +1,6 @@
 {
   "name": "autodump",
+  "description": "An AWS CDK project that natively exports databases to S3 through tags.",
   "version": "0.1.0",
   "scripts": {
     "install-handlers": "cd handlers && pnpm i --frozen-lockfile",
@@ -9,18 +10,14 @@
     "build-handlers": "cd handlers && pnpm run build",
     "build-cdk": "cd cdk && pnpm run build",
     "build": "concurrently \"pnpm:build-handlers\" \"pnpm:build-cdk\" -c blue,green",
-    "makepretty-handlers": "cd handlers && pnpm run makepretty",
-    "makepretty-cdk": "cd cdk && pnpm run makepretty",
-    "makepretty": "concurrently \"pnpm:makepretty-handlers\" \"pnpm:makepretty-cdk\" -c blue,green",
+    "fmt-handlers": "cd handlers && pnpm run fmt",
+    "fmt-cdk": "cd cdk && pnpm run fmt",
+    "fmt": "concurrently \"pnpm:fmt-handlers\" \"pnpm:fmt-cdk\" -c blue,green",
     "watch-handlers": "cd handlers && pnpm run watch",
-    "watch-cdk": "cd cdk && cdk watch Funding/Api",
+    "watch-cdk": "cd cdk && cdk watch AutoDump",
     "watch": "concurrently \"pnpm:watch-handlers\" \"pnpm:watch-cdk\" -c red,green"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
-  },
-  "dependencies": {
-    "@aws-cdk/aws-stepfunctions-tasks": "^1.204.0",
-    "aws-cdk-lib": "^2.128.0"
+    "concurrently": "^9.1.0"
   }
 }
