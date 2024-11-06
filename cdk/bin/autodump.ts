@@ -3,7 +3,14 @@ import 'source-map-support/register';
 import {AutoDumpStack} from '../lib/autodump-stack';
 import {ExtendedApp} from 'truemark-cdk-lib/aws-cdk';
 
-const app = new ExtendedApp();
+const app = new ExtendedApp({
+  standardTags: {
+    automationTags: {
+      id: 'autodump',
+      url: 'https://github.com/truemark/autodump',
+    },
+  },
+});
 
 const vpcId = app.node.tryGetContext('vpcId');
 // The only thing we can specifically say about the vpcId is that it starts
