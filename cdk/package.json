@@ -1,12 +1,5 @@
 {
   "name": "autodump-cdk",
-  "version": "0.1.0",
-  "description": "An AWS CDK project that natively exports databases to S3 through tags.",
-  "homepage": "https://github.com/truemark/autodump",
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:truemark/autodump.git"
-  },
   "bin": {
     "autodump": "bin/autodump.js"
   },

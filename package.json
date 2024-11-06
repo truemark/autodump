@@ -2,6 +2,10 @@
   "name": "autodump",
   "description": "An AWS CDK project that natively exports databases to S3 through tags.",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:truemark/autodump.git"
+  },
   "scripts": {
     "install-handlers": "cd handlers && pnpm i --frozen-lockfile",
     "install-cdk": "cd cdk && pnpm i --frozen-lockfile",

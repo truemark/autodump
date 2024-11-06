@@ -1,6 +1,5 @@
 {
   "name": "autodump-handlers",
-  "version": "0.1.0",
   "scripts": {
     "prebuild": "prettier --check . && eslint .",
     "build": "tsc",

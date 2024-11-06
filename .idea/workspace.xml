@@ -5,56 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e9509d47-756c-400a-91c7-b619903aee33" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/aws.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer2.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer3.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer4.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer5.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer6.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer7.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/layer8.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.npmrc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cdk/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cdk/eslint.config.mjs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cdk/prettier.config.mjs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/handlers/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/handlers/eslint.config.mjs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/handlers/prettier.config.mjs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.editorconfig" beforeDir="false" afterPath="$PROJECT_DIR$/.editorconfig" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/dependabot.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/workflows/issues.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/workflows/publish.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/.eslintignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/.eslintrc.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/.npmrc" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/.npmrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/.prettierignore" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/.prettierignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/.prettierrc.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/autodump.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/bin/autodump.ts" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/bin/autodump.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/cdk.json" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/cdk.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/jest.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/jest.config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/lib/autodump-construct.ts" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/lib/autodump-construct.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/lib/hash-function.ts" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/lib/hash-function.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/lib/scanner-function.ts" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/lib/scanner-function.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cdk/lib/autodump-stack.ts" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/lib/autodump-stack.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cdk/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/pnpm-lock.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cdk/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/cdk/tsconfig.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/.eslintignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/.eslintrc.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/.prettierignore" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/.prettierignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/.prettierrc.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/jest.config.js" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/handlers/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/pnpm-lock.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/src/empty.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/src/empty.test.mts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/src/hash-helper.ts" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/src/hash-helper.mts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/src/hash.ts" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/src/hash.mts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/src/scanner.ts" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/src/scanner.mts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/tsconfig.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -88,7 +48,7 @@
     "git-widget-placeholder": "develop",
     "go.import.settings.migrated": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/erikrj/work/truemark/github/autodump/handlers",
+    "last_opened_file_path": "/Users/erikrj/work/truemark/github/autodump",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.standard": "true",
     "node.js.detected.package.tslint": "true",
@@ -108,9 +68,9 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/handlers" />
       <recent name="$PROJECT_DIR$/cdk" />
-      <recent name="$PROJECT_DIR$" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -138,7 +98,7 @@
       <workItem from="1728512431180" duration="4000" />
       <workItem from="1730904603959" duration="498000" />
       <workItem from="1730905823180" duration="323000" />
-      <workItem from="1730906523623" duration="6267000" />
+      <workItem from="1730906523623" duration="7571000" />
     </task>
     <servers />
   </component>
