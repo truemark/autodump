@@ -1,8 +1,8 @@
 import {Tag as Tags} from '@aws-sdk/client-secrets-manager';
 
 export interface AutoDumpTags {
-  readonly timezone?: string;
-  readonly startSchedule?: string;
+  timezone?: string;
+  startSchedule?: string;
 }
 
 export enum AutoDumpTag {
@@ -32,7 +32,7 @@ export function hashTagsV1(tags: AutoDumpTags): string {
 
 function toCamelCase(str: string): string {
   str = (str.match(/[a-zA-Z0-9]+/g) || [])
-    .map(x => `${x.charAt(0).toUpperCase()}${x.slice(1)}`)
+    .map((x) => `${x.charAt(0).toUpperCase()}${x.slice(1)}`)
     .join('');
   return str.charAt(0).toLowerCase() + str.slice(1);
 }
@@ -43,15 +43,19 @@ export function getTags(tags?: Tags[]): AutoDumpTags {
   }
 
   console.log(`getTags: tags is ${JSON.stringify(tags)}`);
-  return tags.reduce((accumulatedTags, tag) => {
+  return tags.reduce((accumulatedTags: AutoDumpTags, tag) => {
     if (
       tag.Key &&
       tag.Value &&
       Object.values(AutoDumpTag).includes(tag.Key as AutoDumpTag)
     ) {
       const key = toCamelCase(tag.Key.replace('autodump:', ''));
-      // @ts-ignore
-      accumulatedTags[key] = tag.Value.trim();
+      if (key === 'start-schedule') {
+        accumulatedTags.startSchedule = tag.Value.trim();
+      }
+      if (key === 'timezone') {
+        accumulatedTags.timezone = tag.Value.trim();
+      }
     }
     return accumulatedTags;
   }, {} as AutoDumpTags);

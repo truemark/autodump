@@ -2,7 +2,7 @@ import {
   SecretsManagerClient,
   DescribeSecretCommand,
 } from '@aws-sdk/client-secrets-manager';
-import {getTags, hashTagsV1} from './hash-helper';
+import {getTags, hashTagsV1} from './hash-helper.mjs';
 
 const currentRegion = process.env.AWS_REGION;
 

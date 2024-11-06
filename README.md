@@ -2,6 +2,20 @@
 
 This cdk project automates creation of services that dump a database to S3. It scans all secrets within an account looking for secrets that have autodump tags. If any are present, a state machine execution is scheduled that will dump the database referenced in the secret to S3.
 
+## How to deploy
+
+The following example command will deploy AutoDump using the private subnets and VPC specified.
+Replace the IDs with the ones from your account.
+
+```bash
+cdk \
+  -c vpcId=vpc-0a5fd51718cbc523a \
+  -c "privateSubnetIds=subnet-08b42fcaa8530abaf,subnet-017d971130aaa412a" \
+  -c "availabilityZones=us-west-2a,us-west-2b" \
+  -c createReadOnlyUser=true \
+  deploy
+```
+
 ## How this works
 
 ![img.png](img/dfd.png)
@@ -40,6 +54,7 @@ The secret value must have the values listed below.
 
 Below is a screen shot of a sample AutoDump secret value.
 ![img.png](img/secret.png)
+
 ## Supported Tags
 
 | Tag                     | Description                                                                                                        |
