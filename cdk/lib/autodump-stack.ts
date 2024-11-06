@@ -43,7 +43,10 @@ export class AutoDumpStack extends ExtendedStack {
     this.outputParameter('Version', p.version);
     this.outputParameter('vpcId', props.vpcId);
     this.outputParameter('privateSubnetIds', props.privateSubnetIds.join(','));
-    this.outputParameter('availabilityZones', props.availabilityZones.join(','));
+    this.outputParameter(
+      'availabilityZones',
+      props.availabilityZones.join(','),
+    );
     if (props.bucketName) {
       this.outputParameter('bucketName', props.bucketName);
     }
