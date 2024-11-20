@@ -1,7 +1,7 @@
 {
   "name": "autodump",
   "description": "An AWS CDK project that natively exports databases to S3 through tags.",
-  "version": "1.1.1",
+  "version": "1.1.2-alpha.0",
   "repository": {
     "type": "git",
     "url": "git@github.com:truemark/autodump.git"
