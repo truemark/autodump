@@ -86,6 +86,7 @@ function cronAction(
 
 function cronActions(resource: AutoDumpResource): AutoDumpAction[] {
   const actions: AutoDumpAction[] = [];
+  console.log('cronActions: resource is ', resource);
   if (resource.tags.startSchedule !== undefined) {
     const start = cronAction(resource, resource.tags.startSchedule);
 
@@ -267,6 +268,7 @@ export async function handler(event: Event): Promise<boolean> {
                   } tag present: ${JSON.stringify(secret.Tags)}`,
                 );
                 const tags = getTags(secret.Tags);
+                console.log('tags are ', tags);
 
                 resources.push({
                   id: secret.ARN.toString(),

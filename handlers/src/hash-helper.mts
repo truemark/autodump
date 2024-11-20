@@ -50,13 +50,17 @@ export function getTags(tags?: Tags[]): AutoDumpTags {
       Object.values(AutoDumpTag).includes(tag.Key as AutoDumpTag)
     ) {
       const key = toCamelCase(tag.Key.replace('autodump:', ''));
-      if (key === 'start-schedule') {
+      console.log(`getTags: key is ${key}`);
+      if (key === 'startSchedule') {
         accumulatedTags.startSchedule = tag.Value.trim();
       }
       if (key === 'timezone') {
         accumulatedTags.timezone = tag.Value.trim();
       }
     }
+    console.log(
+      `getTags: accumulatedTags is ${JSON.stringify(accumulatedTags)}`,
+    );
     return accumulatedTags;
   }, {} as AutoDumpTags);
 }
