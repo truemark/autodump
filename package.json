@@ -25,6 +25,6 @@
     "watch": "concurrently \"pnpm:watch-handlers\" \"pnpm:watch-cdk\" -c red,green"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.2"
   }
 }
